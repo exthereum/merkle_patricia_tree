@@ -43,7 +43,7 @@ defmodule MerklePatriciaTree.Mixfile do
       {:hex_prefix, "~> 0.1.0"},
       {:ex_rlp, "~> 0.2.0"},
       {:keccakf1600, "~> 2.0.0"},
-      {:exleveldb, "~> 0.11.1"},
+      {:exleveldb, github: "exthereum/exleveldb"},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
     ]
   end
