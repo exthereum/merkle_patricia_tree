@@ -11,6 +11,7 @@ install:
   - PATH="${EX_DIR:?}/bin:$PATH" mix local.rebar --force
 script:
   - PATH="${EX_DIR:?}/bin:$PATH" mix deps.get
+  - PATH="${EX_DIR:?}/bin:$PATH" mix compile
   - PATH="${EX_DIR:?}/bin:$PATH" mix test --trace
 after_script:
   - PATH="${EX_DIR:?}/bin:$PATH" mix dialyzer
