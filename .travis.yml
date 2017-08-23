@@ -1,0 +1,22 @@
+sudo: false
+language: erlang
+otp_release:
+  - 19.3.6.1
+before_install:
+  - git clone "${EX_URL:?}" -b "${EX_V:?}" "${EX_DIR:?}"
+install:
+  - ( cd "${EX_DIR:?}" && make clean compile; )
+  - test -f "${EX_CANARY:?}"
+  - PATH="${EX_DIR:?}/bin:$PATH" mix local.hex --force
+  - PATH="${EX_DIR:?}/bin:$PATH" mix local.rebar --force
+script:
+  - PATH="${EX_DIR:?}/bin:$PATH" mix deps.get
+  - PATH="${EX_DIR:?}/bin:$PATH" mix test
+after_script:
+  - PATH="${EX_DIR:?}/bin:$PATH" mix dialyzer
+env:
+  global:
+    - EX_URL=https://github.com/elixir-lang/elixir.git
+    - EX_V=v1.5.1
+    - EX_DIR="${TRAVIS_BUILD_DIR:?}/elixir"
+    - EX_CANARY="${EX_DIR:?}/lib/elixir/ebin/elixir.beam"
