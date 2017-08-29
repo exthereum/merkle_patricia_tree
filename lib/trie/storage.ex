@@ -18,7 +18,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
       iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
       iex> MerklePatriciaTree.Trie.Storage.put_node(<<>>, trie)
-      nil
+      <<>>
       iex> MerklePatriciaTree.Trie.Storage.put_node(ExRLP.encode("Hi"), trie)
       <<130, 72, 105>>
       iex> MerklePatriciaTree.Trie.Storage.put_node(ExRLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
@@ -26,18 +26,26 @@ defmodule MerklePatriciaTree.Trie.Storage do
              165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
              214, 26, 122, 164>>
   """
-  @spec put_node(ExRLP.t, Trie.t) :: nil | binary()
+  @spec put_node(ExRLP.t, Trie.t) :: binary()
   def put_node(rlp_encoded_node, trie) do
     case byte_size(rlp_encoded_node) do
-      0 -> nil # nil is nil
+      0 -> <<>> # nil is nil
       x when x < @max_rlp_len -> rlp_encoded_node # return node itself
       _ ->
-        node_hash = :keccakf1600.sha3_256(rlp_encoded_node) # sha3
-
-        DB.put!(trie.db, node_hash, rlp_encoded_node) # store in db
-
-        node_hash # return hash
+        store(rlp_encoded_node, trie.db)
     end
+  end
+
+  @doc """
+  TODO: Doc and test
+  """
+  @spec store(ExRLP.t, MerklePatriciaTree.DB.db) :: binary()
+  def store(rlp_encoded_node, db) do
+    node_hash = :keccakf1600.sha3_256(rlp_encoded_node) # sha3
+
+    DB.put!(db, node_hash, rlp_encoded_node) # store in db
+
+    node_hash # return hash
   end
 
   @doc """

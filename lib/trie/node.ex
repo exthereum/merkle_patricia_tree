@@ -26,7 +26,7 @@ defmodule MerklePatriciaTree.Trie.Node do
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node(:empty, trie)
-  <<128>>
+  <<>>
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node({:leaf, [5,6,7], "ok"}, trie)
@@ -44,9 +44,12 @@ defmodule MerklePatriciaTree.Trie.Node do
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type()
-    |> ExRLP.encode()
+    |> maybe_rlp_encode()
     |> Storage.put_node(trie)
   end
+
+  defp maybe_rlp_encode(<<>>), do: <<>>
+  defp maybe_rlp_encode(x), do: ExRLP.encode(x)
 
   defp encode_node_type({:leaf, key, value}) do
     [HexPrefix.encode({key, true}), value]
@@ -90,6 +93,7 @@ defmodule MerklePatriciaTree.Trie.Node do
   @spec decode_trie(Trie.t) :: trie_node
   def decode_trie(trie) do
     case Storage.get_node(trie) do
+      nil -> :empty
       <<>> -> :empty
       branches when length(branches) == 17 ->
         {:branch, branches}

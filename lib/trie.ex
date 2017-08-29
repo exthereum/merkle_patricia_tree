@@ -3,6 +3,7 @@ defmodule MerklePatriciaTree.Trie do
 
   alias MerklePatriciaTree.Trie.Helper
   alias MerklePatriciaTree.Trie.Builder
+  alias MerklePatriciaTree.Trie.Destroyer
   alias MerklePatriciaTree.Trie.Node
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.ListHelper
@@ -51,7 +52,7 @@ defmodule MerklePatriciaTree.Trie do
   """
   @spec new(DB.db, root_hash) :: __MODULE__.t
   def new(db={_, _}, root_hash \\ @empty_trie) do
-    %__MODULE__{db: db, root_hash: root_hash}
+    %__MODULE__{db: db, root_hash: root_hash} |> store
   end
 
   @doc """
@@ -109,9 +110,18 @@ defmodule MerklePatriciaTree.Trie do
   end
 
   @doc """
-  Updates a trie by setting key equal to value.
+  Updates a trie by setting key equal to value. If value is nil,
+  we will instead remove `key` from the trie.
   """
-  @spec update(__MODULE__.t, __MODULE__.key, ExRLP.t) :: __MODULE__.t
+  @spec update(__MODULE__.t, __MODULE__.key, ExRLP.t | nil) :: __MODULE__.t
+  def update(trie, key, nil) do
+    Node.decode_trie(trie)
+    |> Destroyer.remove_key(Helper.get_nibbles(key), trie)
+    |> Node.encode_node(trie)
+    |> into(trie)
+    |> store
+  end
+
   def update(trie, key, value) do
     # We're going to recursively walk toward our key,
     # then we'll add our value (either a new leaf or the value
@@ -122,6 +132,15 @@ defmodule MerklePatriciaTree.Trie do
     |> Builder.put_key(Helper.get_nibbles(key), value, trie)
     |> Node.encode_node(trie)
     |> into(trie)
+    |> store
+  end
+
+  def store(trie) do
+    if byte_size(trie.root_hash) < 32 do
+      %{trie | root_hash: trie.root_hash |> MerklePatriciaTree.Trie.Storage.store(trie.db)}
+    else
+      trie
+    end
   end
 
 end

@@ -126,9 +126,14 @@ defmodule MerklePatriciaTree.TrieTest do
       assert Trie.get(trie_2, <<0x01::4, 0x02::4>>) == nil
       assert Trie.get(trie_2, <<0x01::4, 0x02::4, 0x03::4>>) == "cool"
       assert Trie.get(trie_2, <<0x01::4, 0x02::4, 0x03::4, 0x04::4>>) == nil
+    end
 
-      # assert Trie.root(trie) == nil
-      # assert Trie.root(trie_2) == "cool root"
+    test "from blog post", %{db: db} do
+      trie = Trie.new(db)
+
+      trie_2 = Trie.update(trie, <<0x01::4, 0x01::4, 0x02::4>>, "hello")
+
+      assert trie_2.root_hash == "4a5b19d151e796482b08a1e020f1f7ef5ea7240c0171fd629598fee612892a7b"
     end
 
     test "update a leaf value (when stored directly)", %{db: db} do

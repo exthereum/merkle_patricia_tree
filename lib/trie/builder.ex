@@ -9,13 +9,12 @@ defmodule MerklePatriciaTree.Trie.Builder do
   number of functional and invariant tests. We should add more specific
   unit tests to this module.
 
-  TODO: Test
   """
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Trie.Node
   alias MerklePatriciaTree.ListHelper
 
-  @empty_branch Node.encode_node(:empty, nil)
+  @empty_branch <<>>
 
   @doc """
   Adds a key-value pair to a given trie.
