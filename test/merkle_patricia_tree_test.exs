@@ -6,7 +6,10 @@ defmodule MerklePatriciaTreeTest do
   @passing_tests %{
     anyorder: [
       :singleItem,
-      :dogs
+      :dogs,
+      :foo,
+      :smallValues,
+      :puppy
     ]
   }
 

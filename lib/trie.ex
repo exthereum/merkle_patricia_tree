@@ -136,8 +136,10 @@ defmodule MerklePatriciaTree.Trie do
   end
 
   def store(trie) do
-    if byte_size(trie.root_hash) < 32 do
-      %{trie | root_hash: trie.root_hash |> MerklePatriciaTree.Trie.Storage.store(trie.db)}
+    root_hash = if not is_binary(trie.root_hash), do: ExRLP.encode(trie.root_hash), else: trie.root_hash
+
+    if byte_size(root_hash) < 32 do
+      %{trie | root_hash: root_hash |> MerklePatriciaTree.Trie.Storage.store(trie.db)}
     else
       trie
     end

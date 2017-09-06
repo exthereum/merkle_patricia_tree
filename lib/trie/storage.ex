@@ -30,7 +30,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
   def put_node(rlp_encoded_node, trie) do
     case byte_size(rlp_encoded_node) do
       0 -> <<>> # nil is nil
-      x when x < @max_rlp_len -> rlp_encoded_node # return node itself
+      x when x < @max_rlp_len -> x # return node itself
       _ ->
         store(rlp_encoded_node, trie.db)
     end
@@ -75,8 +75,8 @@ defmodule MerklePatriciaTree.Trie.Storage do
   @spec get_node(Trie.t) :: ExRLP.t
   def get_node(trie) do
     case trie.root_hash do
-      <<>> -> <<>> # nil
-      x when byte_size(x) < @max_rlp_len -> ExRLP.decode(x) # stored directly
+      <<>> -> <<>>
+      x when not is_binary(x) -> x # stored directly
       h ->
         case DB.get(trie.db, h) do # stored in db
           {:ok, v} -> ExRLP.decode(v)

@@ -16,6 +16,8 @@ defmodule MerklePatriciaTree.Trie.Node do
     {:ext, [integer()], binary()} |
     {:branch, [binary()]}
 
+  @max_rlp_len 32
+
   @doc """
   Given a node, this function will encode the node
   and put the value to storage (for nodes that are
@@ -44,12 +46,15 @@ defmodule MerklePatriciaTree.Trie.Node do
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type()
-    |> maybe_rlp_encode()
-    |> Storage.put_node(trie)
+    |> maybe_store(trie)
   end
 
-  defp maybe_rlp_encode(<<>>), do: <<>>
-  defp maybe_rlp_encode(x), do: ExRLP.encode(x)
+  defp maybe_store(x, trie) do
+    case ExRLP.encode(x) do
+      encoded when byte_size(encoded) >= @max_rlp_len -> Storage.store(encoded, trie.db)
+      _ -> x
+    end
+  end
 
   defp encode_node_type({:leaf, key, value}) do
     [HexPrefix.encode({key, true}), value]
