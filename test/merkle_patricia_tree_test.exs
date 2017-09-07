@@ -44,7 +44,7 @@ defmodule MerklePatriciaTreeTest do
   end
 
   def test_file_name(type) do
-    "test/support/ethereum_common_tests/TrieTests/trie#{Macro.camelize(Atom.to_string(type))}.json"
+    "test/support/ethereum_common_tests/TrieTests/trie#{Atom.to_string(type)}.json"
   end
 
   def maybe_hex("0x" <> _str=hex_string), do: hex_to_binary(hex_string)
