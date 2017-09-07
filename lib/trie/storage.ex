@@ -14,25 +14,31 @@ defmodule MerklePatriciaTree.Trie.Storage do
   Takes an RLP-encoded node and pushes it to storage,
   as defined by `n(I, i)` Eq.(178) of the Yellow Paper.
 
+  NOTA BENE: we are forced to deviate from the Yellow Paper as nodes which are
+  smaller than 32 bytes aren't encoded in RLP, as suggested by the equations.
+
+  Specifically, Eq.(178) says that the node is encoded as `c(J,i)` in the second
+  portion of the definition of `n`. By the definition of `c`, all return values are
+  RLP encoded. But, we have found emperically that the `n` does not encode values to
+  RLP for smaller nodes.
+
   ## Examples
 
       iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
       iex> MerklePatriciaTree.Trie.Storage.put_node(<<>>, trie)
       <<>>
-      iex> MerklePatriciaTree.Trie.Storage.put_node(ExRLP.encode("Hi"), trie)
+      iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie)
       <<130, 72, 105>>
-      iex> MerklePatriciaTree.Trie.Storage.put_node(ExRLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
+      iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
       <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
              165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
              214, 26, 122, 164>>
   """
   @spec put_node(ExRLP.t, Trie.t) :: binary()
-  def put_node(rlp_encoded_node, trie) do
-    case byte_size(rlp_encoded_node) do
-      0 -> <<>> # nil is nil
-      x when x < @max_rlp_len -> x # return node itself
-      _ ->
-        store(rlp_encoded_node, trie.db)
+  def put_node(rlp, trie) do
+    case ExRLP.encode(rlp) do
+      encoded when byte_size(encoded) >= @max_rlp_len -> store(encoded, trie.db) # store large nodes
+      _ -> rlp # otherwise, return node itself
     end
   end
 
@@ -76,7 +82,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
   def get_node(trie) do
     case trie.root_hash do
       <<>> -> <<>>
-      x when not is_binary(x) -> x # stored directly
+      x when not is_binary(x) -> x # node was stored directly
       h ->
         case DB.get(trie.db, h) do # stored in db
           {:ok, v} -> ExRLP.decode(v)

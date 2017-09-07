@@ -46,14 +46,7 @@ defmodule MerklePatriciaTree.Trie.Node do
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type()
-    |> maybe_store(trie)
-  end
-
-  defp maybe_store(x, trie) do
-    case ExRLP.encode(x) do
-      encoded when byte_size(encoded) >= @max_rlp_len -> Storage.store(encoded, trie.db)
-      _ -> x
-    end
+    |> Storage.put_node(trie)
   end
 
   defp encode_node_type({:leaf, key, value}) do

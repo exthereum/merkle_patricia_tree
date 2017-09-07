@@ -22,7 +22,6 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   This may radically change the structure of the trie.
   """
   def remove_key(trie_node, key, trie) do
-    IO.inspect(["Removing", trie_node, key, trie])
     trie_remove_key(trie_node, key, trie)
   end
 
@@ -66,7 +65,7 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
     updated_branches = List.update_at(branches, prefix_hd, fn branch ->
       branch_node = branch |> Trie.into(trie) |> Node.decode_trie
 
-      remove_key(branch_node, prefix_tl, trie) |> IO.inspect |> Node.encode_node(trie) |> IO.inspect
+      remove_key(branch_node, prefix_tl, trie) |> Node.encode_node(trie)
     end)
 
     non_blank_branches =

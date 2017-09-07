@@ -67,8 +67,7 @@ defmodule MerklePatriciaTree.Trie.Builder do
         # [] -> {16, {:encoded, old_value}} # TODO: Is this right?
         [h|[]] -> {h, {:encoded, old_value}}
         [h|t] ->
-          leaf_encoded = {:leaf, [], old_value} |> Node.encode_node(trie)
-          ext_encoded = {:ext, t, leaf_encoded} |> Node.encode_node(trie)
+          ext_encoded = {:ext, t, old_value} |> Node.encode_node(trie)
 
           {h, {:encoded, ext_encoded}}
       end
