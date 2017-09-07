@@ -10,6 +10,9 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   @max_rlp_len 32
 
+  @spec max_rlp_len() :: integer()
+  def max_rlp_len(), do: @max_rlp_len
+
   @doc """
   Takes an RLP-encoded node and pushes it to storage,
   as defined by `n(I, i)` Eq.(178) of the Yellow Paper.
@@ -28,7 +31,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
       iex> MerklePatriciaTree.Trie.Storage.put_node(<<>>, trie)
       <<>>
       iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie)
-      <<130, 72, 105>>
+      "Hi"
       iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
       <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
              165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
@@ -62,7 +65,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
     iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
-    ""
+    nil
 
     iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<130, 72, 105>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
@@ -73,8 +76,10 @@ defmodule MerklePatriciaTree.Trie.Storage do
     ** (RuntimeError) Cannot find value in DB: <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>
 
     iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<130, 72, 105>>)
-    iex> MerklePatriciaTree.Trie.Storage.put_node(ExRLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
-    <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201, 165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84, 214, 26, 122, 164>>
+    iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
+    <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
+      165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
+      214, 26, 122, 164>>
     iex> MerklePatriciaTree.Trie.Storage.get_node(%{trie| root_hash: <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201, 165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84, 214, 26, 122, 164>>})
     ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
   """

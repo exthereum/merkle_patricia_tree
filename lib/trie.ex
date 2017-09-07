@@ -38,14 +38,16 @@ defmodule MerklePatriciaTree.Trie do
   ## Examples
 
     iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(:trie_test_1))
-    %MerklePatriciaTree.Trie{db: {MerklePatriciaTree.DB.ETS, :trie_test_1}, root_hash: <<128>>}
+    %MerklePatriciaTree.Trie{db: {MerklePatriciaTree.DB.ETS, :trie_test_1}, root_hash: <<197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125, 178, 220, 199, 3, 192, 229, 0, 182, 83, 202, 130, 39, 59, 123, 250, 216, 4, 93, 133, 164, 112>>}
 
     iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(:trie_test_2), <<1, 2, 3>>)
-    %MerklePatriciaTree.Trie{db: {MerklePatriciaTree.DB.ETS, :trie_test_2}, root_hash: <<1, 2, 3>>}
+    %MerklePatriciaTree.Trie{db: {MerklePatriciaTree.DB.ETS, :trie_test_2}, root_hash: <<241, 136, 94, 218, 84, 183, 160, 83, 49, 140, 212, 30, 32, 147, 34, 13, 171, 21, 214, 83, 129, 177, 21, 122, 54, 51, 168, 59, 253, 92, 146, 57>>}
 
     iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.LevelDB.init("/tmp/#{MerklePatriciaTree.Test.random_string(20)}"), <<1, 2, 3>>)
     iex> trie.root_hash
-    <<1, 2, 3>>
+    <<241, 136, 94, 218, 84, 183, 160, 83, 49, 140, 212, 30, 32, 147, 34,
+      13, 171, 21, 214, 83, 129, 177, 21, 122, 54, 51, 168, 59, 253, 92,
+      146, 57>>
     iex> {db, _db_ref} = trie.db
     iex> db
     MerklePatriciaTree.DB.LevelDB
@@ -138,7 +140,7 @@ defmodule MerklePatriciaTree.Trie do
   def store(trie) do
     root_hash = if not is_binary(trie.root_hash), do: ExRLP.encode(trie.root_hash), else: trie.root_hash
 
-    if byte_size(root_hash) < 32 do
+    if byte_size(root_hash) < MerklePatriciaTree.Trie.Storage.max_rlp_len do
       %{trie | root_hash: root_hash |> MerklePatriciaTree.Trie.Storage.store(trie.db)}
     else
       trie

@@ -12,7 +12,6 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   """
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Trie.Node
-  alias MerklePatriciaTree.ListHelper
 
   @empty_branch Node.encode_node(:empty, nil)
 

@@ -16,8 +16,6 @@ defmodule MerklePatriciaTree.Trie.Node do
     {:ext, [integer()], binary()} |
     {:branch, [binary()]}
 
-  @max_rlp_len 32
-
   @doc """
   Given a node, this function will encode the node
   and put the value to storage (for nodes that are
@@ -32,15 +30,15 @@ defmodule MerklePatriciaTree.Trie.Node do
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node({:leaf, [5,6,7], "ok"}, trie)
-  <<198, 130, 53, 103, 130, 111, 107>>
+  ["5g", "ok"]
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node({:branch, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>]}, trie)
-  <<209, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128>>
+  ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node({:ext, [1, 2, 3], <<>>}, trie)
-  <<196, 130, 17, 35, 128>>
+  [<<17, 35>>, ""]
   """
   @spec encode_node(trie_node, Trie.t) :: nil | binary()
   def encode_node(trie_node, trie) do
