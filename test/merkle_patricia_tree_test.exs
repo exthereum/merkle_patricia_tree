@@ -39,7 +39,7 @@ defmodule MerklePatriciaTreeTest do
   end
 
   def read_test_file(type) do
-    {:ok, body} = File.read(test_file_name(type))
+    {:ok, body} = File.read(test_file_name(type) |> IO.inspect)
     Poison.decode!(body)
   end
 
