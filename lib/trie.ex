@@ -72,6 +72,8 @@ defmodule MerklePatriciaTree.Trie do
     %{trie| root_hash: next_node}
   end
 
+  def get_next_node(next_node, trie), do: into(next_node, trie)
+
   @doc """
   Given a trie, returns the value associated with key.
   """
