@@ -1,11 +1,10 @@
-defmodule MerklePatriciaTreeProof do
+defmodule MerklePatriciaTreeProofTest do
   use ExUnit.Case
 
   alias MerklePatriciaTree.Trie
-  alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Test
-  alias MerklePatriciaTree.Trie.Node5B
-  alias MerklePatriciaTree.Trie.Helper
+
+  @max_32_bits 4
 
   def create_test_trie_test() do
     db = Test.random_ets_db(:test)
@@ -18,26 +17,45 @@ defmodule MerklePatriciaTreeProof do
   end
 
   def get_tree_list() do
-    [{<<0::4, 1::4, 1::4>>, <<"011">>},
-     {<<0::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, <<"113">>},
-     {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4>>,  <<"112">>},
-     {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4, 5::4, 7::4>>, <<"11257">>},
-     {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4, 5::4, 7::4, 8::4, 0::4>>, <<"1125780">>}]
+    [
+      {<<11::4, 1::4, 2::4>>, <<"1">>},
+      {<<1::4, 1::4, 2::4, 3::4>>, <<"2">>},
+      {<<0::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, <<"113">>},
+      {<<0::4, 1::4, 0::4, 1::4, 0::4, 4::4>>, <<"114">>},
+
+      {<<1::4, 1::4, 5::4>>, <<0,0,0,0>>},
+      {<<1::4, 1::4, 11::4, 3::4>>, <<"33333333">>},
+      {<<5::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, "1"},
+      {<<5::4, 1::4, 0::4, 1::4, 0::4, 4::4>>, <<"55555555555">>},
+
+      {<<3::4, 1::4, 5::4, 10::4>>, <<"2222222">>},
+      {<<3::4, 1::4, 11::4, 3::4>>, <<"33333333">>},
+      {<<3::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, <<"4444444444">>},
+      {<<1::4, 1::4, 0::4, 1::4, 0::4, 4::4>>, <<"55555555555">>},
+
+
+      {<<3::4, 1::4, 5::4, 10::4, 1::4>>, <<"2222222">>},
+      {<<3::4, 1::4, 12::4, 3::4>>, <<"33333333">>},
+      {<<3::4, 1::4, 3::4, 1::4, 0::4, 3::4>>, <<"4444444444">>},
+      {<<1::4, 1::4, 0::4, 1::4, 0::4, 5::4>>, <<"55555555555">>},
+
+      {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4>>, <<"112">>},
+      {<<0::4, 2::4, 0::4, 1::4, 0::4, 2::4, 5::4, 7::4>>, <<"11257">>},
+      {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4, 5::4, 8::4>>, <<"11258">>},
+      {<<0::4, 1::4, 0::4, 1::4, 0::4, 11::4, 5::4, 6::4, 8::4, 0::4>>, <<"1125680">>},
+      {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4, 2::4, 7::4, 8::4, 0::4>>, <<"1125780">>}
+
+    ]
   end
 
-  @tag :proof_test_1
+  @tag :proof_test_success
   test "Proof Success Tests" do
     trie = create_test_trie_test
 
-    Enum.all?(get_tree_list(), fn({key, val}) ->
+    Enum.all?(get_tree_list() , fn({key, val}) ->
       {val, proof} = MerklePatriciaTree.Proof.construct_proof(trie, key)
-      res = if MerklePatriciaTree.Proof.verify_proof(key, val, trie.root_hash, proof.db) do
-        true
-      else
-        false
-      end
+      assert :true = MerklePatriciaTree.Proof.verify_proof(key, val, trie.root_hash, proof.db)
 
-      assert :true = res
     end)
   end
 

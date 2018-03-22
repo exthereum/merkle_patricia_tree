@@ -9,17 +9,17 @@ defmodule MerklePatriciaTree.Proof do
   alias MerklePatriciaTree.ListHelper
 
   def construct_proof(trie, key) do
+    trie_res = Trie.get(trie, key)
     proof_db = Trie.new(Test.random_ets_db())
     insert_proof_db(trie.root_hash, trie.db, proof_db)
     construct_proof(Trie.get_next_node(trie.root_hash, trie), Helper.get_nibbles(key), proof_db)
   end
 
-  ## TODO : simplify this
-  defp construct_proof(nil, val, proof), do: {val, proof}
   defp construct_proof(trie, nibbles=[nibble| rest], proof) do
     case Node.decode_trie(trie) do
       :empty ->
         {nil, proof}
+
       {:branch, branches} ->
         # branch node
         case Enum.at(branches, nibble) do
@@ -34,12 +34,12 @@ defmodule MerklePatriciaTree.Proof do
 
           node_hash ->
             construct_proof(Trie.get_next_node(node_hash, trie), rest, proof)
+
         end
 
       {:leaf, prefix, value} ->
         case nibbles do
-          ^prefix ->
-            {value, proof}
+          ^prefix -> {value, proof}
           _ -> {nil, proof}
         end
 
@@ -47,25 +47,33 @@ defmodule MerklePatriciaTree.Proof do
         {node_val, proof}
 
       {:ext, shared_prefix, next_node} when is_list(next_node) ->
-        {{:branch, next_node}, proof}
 
-        {:ext, shared_prefix, next_node} ->
+        # extension, continue walking tree if we match
         case ListHelper.get_postfix(nibbles, shared_prefix) do
-          nil ->
-            {nil, proof}
+          nil -> {nil, proof} # did not match extension node
+          rest -> construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+        end
 
+      {:ext, shared_prefix, next_node} ->
+        case ListHelper.get_postfix(nibbles, shared_prefix) do
+          nil  -> {nil, proof}
           rest ->
-            insert_proof_db(next_node, trie.db, proof)
-            construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+              insert_proof_db(next_node, trie.db, proof)
+              construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
         end
     end
   end
 
   defp construct_proof(trie, [], proof) do
     case Node.decode_trie(trie) do
-      {:branch, branches} -> {List.last(branches), proof}
-      {:leaf, [], v} -> {v, proof}
-      _ -> {nil, proof}
+      {:branch, branches} ->
+        {List.last(branches), proof}
+
+      {:leaf, [], v} ->
+        {v, proof}
+
+      _ ->
+        {nil, proof}
     end
   end
 
@@ -82,19 +90,15 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  def set_branch(branch) do
-    {:branch, branch}
-  end
+  def set_branch(branch), do: {:branch, branch}
 
   def read_from_db(db, hash), do: MerklePatriciaTree.DB.get(db, hash)
 
-  def get_branch_val(branch, at) do
-    Enum.at(branch, at)
-  end
+  def get_branch_val(branch, at), do: Enum.at(branch, at)
 
   def construct_path(path1, path2), do: path1 -- path2
 
-  def int_verify_proof(path, {:value, {cpath, true}, val}, value, proof_db) do
+  def int_verify_proof(path, {:value, {cpath, true}, val}, value, proof_db) when val == value do
     :true
   end
 
@@ -102,7 +106,7 @@ defmodule MerklePatriciaTree.Proof do
     int_verify_proof([], decode_node(construct_val(val), proof_db), value, proof_db)
   end
 
-  def int_verify_proof([head_p | tail_p] = path, {:value, {cpath, false}, val}, value, proof_db) do
+  def int_verify_proof([nibble | nibbles] = path, {:value, {cpath, false}, val}, value, proof_db) do
     {nibble, nibbles, rest} =
        if cpath == path do
          {[], [], []}
@@ -116,8 +120,15 @@ defmodule MerklePatriciaTree.Proof do
         int_verify_proof(nibbles, decode_node(construct_val(bin), proof_db), value, proof_db)
 
       [_|_] = branch when length(branch) == 17 ->
-        ## TODO
-        :false
+
+        branch_val =
+        if nibble == [] do
+          get_branch_val(branch, 16)
+        else
+          get_branch_val(branch, nibble)
+        end
+
+        int_verify_proof(nibbles, decode_node(construct_val(branch), proof_db), value, proof_db)
 
       [k, v] ->
         ## TODO
@@ -137,8 +148,8 @@ defmodule MerklePatriciaTree.Proof do
       ^value ->
         :true
 
-      bad_value ->
-        {:bad_value, bad_value}
+      _bad_value ->
+        false
     end
   end
 
