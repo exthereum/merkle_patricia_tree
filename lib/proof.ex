@@ -10,13 +10,7 @@ defmodule MerklePatriciaTree.Proof do
 
   def construct_proof(trie, key) do
     proof_db = Trie.new(Test.random_ets_db())
-    case MerklePatriciaTree.DB.get(trie.db, trie.root_hash) do
-      {:ok, val} when is_binary(val) ->
-
-        MerklePatriciaTree.DB.put!(proof_db.db, trie.root_hash, val)
-      _ ->
-        :ok
-    end
+    insert_proof_db(trie.root_hash, trie.db, proof_db)
     construct_proof(Trie.get_next_node(trie.root_hash, trie), Helper.get_nibbles(key), proof_db)
   end
 
@@ -43,17 +37,16 @@ defmodule MerklePatriciaTree.Proof do
         end
 
       {:leaf, prefix, value} ->
-
         case nibbles do
           ^prefix ->
             {value, proof}
           _ -> {nil, proof}
         end
 
-        {:ext, shared_prefix, node_val} when shared_prefix == nibbles ->
+      {:ext, shared_prefix, node_val} when shared_prefix == rest ->
         {node_val, proof}
 
-        {:ext, shared_prefix, next_node} when is_list(next_node) ->
+      {:ext, shared_prefix, next_node} when is_list(next_node) ->
         {{:branch, next_node}, proof}
 
         {:ext, shared_prefix, next_node} ->
@@ -132,11 +125,20 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
+  def int_verify_proof([], {:branch, [_|_] = branch}, value, proof_db) when length(branch) == 17 do
+    get_branch_val(branch, 16) == value
+  end
+
   def int_verify_proof([], val, value, proof_db) do
     case val do
-      [_, ^value] -> :true
-      ^value -> :true
-      bad_value -> {:bad_value, bad_value}
+      [_, ^value] ->
+        :true
+
+      ^value ->
+        :true
+
+      bad_value ->
+        {:bad_value, bad_value}
     end
   end
 
@@ -164,7 +166,8 @@ defmodule MerklePatriciaTree.Proof do
       {:ok, node} ->
         ExRLP.decode(node) |> construct_val()
 
-        ## TODO
+      :not_found ->
+        ## TODO : handle it
     end
   end
 
