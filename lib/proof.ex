@@ -8,9 +8,10 @@ defmodule MerklePatriciaTree.Proof do
   alias MerklePatriciaTree.Trie.Helper
   alias MerklePatriciaTree.ListHelper
 
+  alias MerklePatriciaTree.DB.LevelDB
+
   def construct_proof(trie, key) do
-    trie_res = Trie.get(trie, key)
-    proof_db = Trie.new(Test.random_ets_db())
+    proof_db = Trie.new(LevelDB.init("tmp/#{MerklePatriciaTree.Test.random_string(20)}"))
     insert_proof_db(trie.root_hash, trie.db, proof_db)
     construct_proof(Trie.get_next_node(trie.root_hash, trie), Helper.get_nibbles(key), proof_db)
   end

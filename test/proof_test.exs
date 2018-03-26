@@ -3,57 +3,53 @@ defmodule MerklePatriciaTreeProofTest do
 
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Test
-
-  @max_32_bits 4
+  alias MerklePatriciaTree.DB.LevelDB
 
   def create_test_trie_test() do
-    db = Test.random_ets_db(:test)
 
-    Enum.reduce(get_tree_list(), Trie.new(db),
-      fn({key, val}, acc_trie) ->
-        Trie.update(acc_trie, key, val)
-      end)
-
+    list = get_tree_list()
+    trie =
+      Enum.reduce(list, Trie.new(LevelDB.init("tmp/#{MerklePatriciaTree.Test.random_string(10)}")),
+        fn({key, val}, acc_trie) ->
+          Trie.update(acc_trie, key, val)
+        end)
+    {trie, list}
   end
 
   def get_tree_list() do
-    [
-      {<<11::4, 1::4, 2::4>>, <<"1">>},
-      {<<1::4, 1::4, 2::4, 3::4>>, <<"2">>},
-      {<<0::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, <<"113">>},
-      {<<0::4, 1::4, 0::4, 1::4, 0::4, 4::4>>, <<"114">>},
+    for _ <- 0..100, do: {random_key(), "0000"}
+  end
 
-      {<<1::4, 1::4, 5::4>>, <<0,0,0,0>>},
-      {<<1::4, 1::4, 11::4, 3::4>>, <<"33333333">>},
-      {<<5::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, "1"},
-      {<<5::4, 1::4, 0::4, 1::4, 0::4, 4::4>>, <<"55555555555">>},
+  def random_key() do
 
-      {<<3::4, 1::4, 5::4, 10::4>>, <<"2222222">>},
-      {<<3::4, 1::4, 11::4, 3::4>>, <<"33333333">>},
-      {<<3::4, 1::4, 0::4, 1::4, 0::4, 3::4>>, <<"4444444444">>},
-      {<<1::4, 1::4, 0::4, 1::4, 0::4, 4::4>>, <<"55555555555">>},
-
-
-      {<<3::4, 1::4, 5::4, 10::4, 1::4>>, <<"2222222">>},
-      {<<3::4, 1::4, 12::4, 3::4>>, <<"33333333">>},
-      {<<3::4, 1::4, 3::4, 1::4, 0::4, 3::4>>, <<"4444444444">>},
-      {<<1::4, 1::4, 0::4, 1::4, 0::4, 5::4>>, <<"55555555555">>},
-
-      {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4>>, <<"112">>},
-      {<<0::4, 2::4, 0::4, 1::4, 0::4, 2::4, 5::4, 7::4>>, <<"11257">>},
-      {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4, 5::4, 8::4>>, <<"11258">>},
-      {<<0::4, 1::4, 0::4, 1::4, 0::4, 11::4, 5::4, 6::4, 8::4, 0::4>>, <<"1125680">>},
-      {<<0::4, 1::4, 0::4, 1::4, 0::4, 2::4, 2::4, 7::4, 8::4, 0::4>>, <<"1125780">>}
-
-    ]
+    <<:rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4,
+      :rand.uniform(15)::4>>
   end
 
   @tag :proof_test_success
+  @tag timeout: 30_000_000
   test "Proof Success Tests" do
-    trie = create_test_trie_test
+    {trie, list} = create_test_trie_test()
 
-    Enum.all?(get_tree_list() , fn({key, val}) ->
+    Enum.all?(list, fn({key, value}) ->
       {val, proof} = MerklePatriciaTree.Proof.construct_proof(trie, key)
+      assert val == value
       assert :true = MerklePatriciaTree.Proof.verify_proof(key, val, trie.root_hash, proof.db)
 
     end)
