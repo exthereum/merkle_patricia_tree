@@ -2,21 +2,41 @@ defmodule MerklePatriciaTreeProofTest do
   use ExUnit.Case
 
   alias MerklePatriciaTree.Trie
-  alias MerklePatriciaTree.Test
   alias MerklePatriciaTree.DB.LevelDB
+  alias MerklePatriciaTree.Proof
 
-  def create_test_trie_test() do
+  @tag :proof_test_success
+  @tag timeout: 30_000_000
+  test "Proof Success Tests" do
+    {trie, list} = create_random_trie_test()
 
-    list = get_tree_list()
+    Enum.each(list, fn({key, value}) ->
+      {^value, proof} =
+        MerklePatriciaTree.Proof.construct_proof({trie, key, Proof.init_proof_trie})
+
+      assert :true = Proof.verify_proof(key, value, trie.root_hash, proof.db)
+
+      {_, proof_ref} = proof.db
+      assert :ok = Exleveldb.close(proof_ref)
+    end)
+
+    {_, db_ref} = trie.db
+    :ok = Exleveldb.close(db_ref)
+  end
+
+  def create_random_trie_test() do
+    db_ref = Trie.new(LevelDB.init("/tmp/trie"))
+    list = get_random_tree_list()
+
     trie =
-      Enum.reduce(list, Trie.new(LevelDB.init("tmp/#{MerklePatriciaTree.Test.random_string(10)}")),
+      Enum.reduce(list, db_ref,
         fn({key, val}, acc_trie) ->
           Trie.update(acc_trie, key, val)
         end)
     {trie, list}
   end
 
-  def get_tree_list() do
+  def get_random_tree_list() do
     for _ <- 0..100, do: {random_key(), "0000"}
   end
 
@@ -40,19 +60,6 @@ defmodule MerklePatriciaTreeProofTest do
       :rand.uniform(15)::4,
       :rand.uniform(15)::4,
       :rand.uniform(15)::4>>
-  end
-
-  @tag :proof_test_success
-  @tag timeout: 30_000_000
-  test "Proof Success Tests" do
-    {trie, list} = create_test_trie_test()
-
-    Enum.all?(list, fn({key, value}) ->
-      {val, proof} = MerklePatriciaTree.Proof.construct_proof(trie, key)
-      assert val == value
-      assert :true = MerklePatriciaTree.Proof.verify_proof(key, val, trie.root_hash, proof.db)
-
-    end)
   end
 
 end
