@@ -9,17 +9,13 @@ defmodule MerklePatriciaTree.Proof do
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.DB.LevelDB
 
-  def init_proof_trie(), do: Trie.new(LevelDB.init("/tmp/proof_trie"))
-
-  ## TODO : test it with external db ref
-  def init_proof_trie(db_ref), do: Trie.new(db_ref)
-
   def construct_proof({trie, key, proof_db}) do
     ## Inserting the value of the root hash into the proof db
     insert_proof_db(trie.root_hash, trie.db, proof_db)
 
     ## Constructing the proof trie going through the rest of the nodes
-    construct_proof(Trie.get_next_node(trie.root_hash, trie), Helper.get_nibbles(key), proof_db)
+    next_node = Trie.get_next_node(trie.root_hash, trie)
+    construct_proof(next_node, Helper.get_nibbles(key), proof_db)
   end
 
   defp construct_proof(trie, nibbles=[nibble| rest], proof) do
@@ -97,34 +93,27 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  defp get_branch_val(branch, at), do: Enum.at(branch, at)
-
-  def construct_path(path1, path2), do: path1 -- path2
-
-  def int_verify_proof(_, {:value, {_, true}, val}, value, _) when val == value do
+  defp int_verify_proof(_, {:value, {_, true}, val}, value, _) when val == value do
     :true
   end
 
-  def int_verify_proof([_ | []], {:value, {_, false}, val}, value, proof_db) do
+  defp int_verify_proof([_ | []], {:value, {_, false}, val}, value, proof_db) do
     int_verify_proof([], decode_node(construct_val(val), proof_db), value, proof_db)
   end
 
-  def int_verify_proof([nibble | nibbles] = path, {:value, {cpath, false}, val}, value, proof_db) do
-    ## TODO: make this better
-    {_nibble, nibbles, _rest} =
-    if cpath == path do
-      {[], [], []}
-    else
-      [nibble | rest] = nibbles = construct_path(path, cpath)
-      {nibble, nibbles, rest}
-    end
+  defp int_verify_proof([_ | _] = path, {:value, {cpath, false}, val}, value, proof_db) do
+    rest = ListHelper.get_postfix(path, cpath)
 
     case val do
       bin when is_binary(bin) ->
-        int_verify_proof(nibbles, decode_node(construct_val(bin), proof_db), value, proof_db)
+        int_verify_proof(
+          rest, decode_node(construct_val(bin), proof_db), value, proof_db
+        )
 
       [_|_] = branch when length(branch) == 17 ->
-        int_verify_proof(nibbles, decode_node(construct_val(branch), proof_db), value, proof_db)
+        int_verify_proof(
+          rest, decode_node(construct_val(branch), proof_db), value, proof_db
+        )
 
       [_k, _v] ->
         ## TODO
@@ -132,31 +121,31 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  def int_verify_proof([], {:branch, [_|_] = branch}, value, _proof_db) when length(branch) == 17 do
+  defp int_verify_proof([], {:branch, [_|_] = branch}, value, _proof_db) when length(branch) == 17 do
     get_branch_val(branch, 16) == value
   end
 
-  def int_verify_proof([], [_, val], value, _proof_db) when val == value, do: true
-  def int_verify_proof([], val, value, _proof_db) when val ==  value, do: true
-  def int_verify_proof([], _val, _value, _proof_db) , do: false
+  defp int_verify_proof([], [_, val], value, _proof_db) when val == value, do: true
+  defp int_verify_proof([], val, value, _proof_db) when val ==  value, do: true
+  defp int_verify_proof([], _val, _value, _proof_db) , do: false
 
-  def int_verify_proof([nibble | [] = nibbles], {:branch, branch}, value, proof_db) do
+  defp int_verify_proof([nibble | [] = nibbles], {:branch, branch}, value, proof_db) do
     branch_val = get_branch_val(branch, nibble)
     int_verify_proof(nibbles, decode_node(construct_val(branch_val), proof_db), value, proof_db)
   end
 
-  def int_verify_proof([_|_] = path, bin, value, proof_db) when is_binary(bin) do
+  defp int_verify_proof([_|_] = path, bin, value, proof_db) when is_binary(bin) do
     int_verify_proof(path, decode_node(bin, proof_db), value, proof_db)
   end
 
-  def int_verify_proof([nibble | nibbles], {:branch, branch}, value, proof_db) do
+  defp int_verify_proof([nibble | nibbles], {:branch, branch}, value, proof_db) do
     branch_val = get_branch_val(branch, nibble)
     int_verify_proof(nibbles, decode_node(construct_val(branch_val), proof_db), value, proof_db)
   end
 
-  def construct_val([_|_] = branch) when length(branch) == 17, do: {:branch, branch}
-  def construct_val(bin) when is_binary(bin), do: bin
-  def construct_val([k, v]), do: {:value, decode_path(k), v}
+  defp construct_val([_|_] = branch) when length(branch) == 17, do: {:branch, branch}
+  defp construct_val(bin) when is_binary(bin), do: bin
+  defp construct_val([k, v]), do: {:value, decode_path(k), v}
 
   ## The node is 32 byte, so perhaps this is hash, so we will look up into db
   defp decode_node(node, db) when byte_size(node) == 32 do
@@ -187,6 +176,8 @@ defmodule MerklePatriciaTree.Proof do
   defp decode_path([key, _node]) when is_binary(key), do: HexPrefix.decode(key)
 
   defp decode_path([_ | _]), do: []
+
+  defp get_branch_val(branch, at), do: Enum.at(branch, at)
 
   ## DB operations
 
