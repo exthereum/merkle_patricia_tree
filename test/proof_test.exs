@@ -13,7 +13,7 @@ defmodule MerklePatriciaTreeProofTest do
     Enum.each(list, fn({key, value}) ->
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie"))
       {^value, proof} =
-        MerklePatriciaTree.Proof.construct_proof({trie, key, proof_trie})
+        Proof.construct_proof({trie, key, proof_trie})
 
       assert :true = Proof.verify_proof(key, value, trie.root_hash, proof.db)
 
@@ -38,7 +38,7 @@ defmodule MerklePatriciaTreeProofTest do
   end
 
   def get_random_tree_list() do
-    for _ <- 0..100, do: {random_key(), random_value(12)}
+    for _ <- 0..1_000, do: {random_key(), random_value(12)}
   end
 
   def random_key() do

@@ -43,15 +43,11 @@ defmodule MerklePatriciaTree.Proof do
 
       {:leaf, prefix, value} ->
         case nibbles do
-          ^prefix -> {value, proof}
+          ^prefix ->{value, proof}
           _ -> {nil, proof}
         end
 
-      {:ext, shared_prefix, node_val} when shared_prefix == rest ->
-        {node_val, proof}
-
       {:ext, shared_prefix, next_node} when is_list(next_node) ->
-
         # extension, continue walking tree if we match
         case ListHelper.get_postfix(nibbles, shared_prefix) do
           nil -> {nil, proof} # did not match extension node
@@ -81,103 +77,66 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  def verify_proof(key, value, hash, proof_db) do
-    case read_from_db(proof_db, hash) do
-      {:ok, node} ->
-        int_verify_proof(
-          Helper.get_nibbles(key),
-          decode_node(construct_val(node), proof_db),
-          value, proof_db)
-
-      {:bad_hash, _} = res -> res
+  def verify_proof(key, value, hash, proof) do
+    case decode_node(hash, proof) do
+      :error -> false
+      node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
     end
   end
 
-  defp int_verify_proof(_, {:value, {_, true}, val}, value, _) when val == value do
-    :true
-  end
-
-  defp int_verify_proof([_ | []], {:value, {_, false}, val}, value, proof_db) do
-    int_verify_proof([], decode_node(construct_val(val), proof_db), value, proof_db)
-  end
-
-  defp int_verify_proof([_ | _] = path, {:value, {cpath, false}, val}, value, proof_db) do
-    rest = ListHelper.get_postfix(path, cpath)
-
-    case val do
-      bin when is_binary(bin) ->
-        int_verify_proof(
-          rest, decode_node(construct_val(bin), proof_db), value, proof_db
-        )
-
-      [_|_] = branch when length(branch) == 17 ->
-        int_verify_proof(
-          rest, decode_node(construct_val(branch), proof_db), value, proof_db
-        )
-
-      [_k, _v] ->
-        ## TODO
-        :false
+  def int_verify_proof(path, {:ext, shared_prefix, next_node}, value, proof) do
+    case ListHelper.get_postfix(path, shared_prefix) do
+      nil -> false
+      rest -> int_verify_proof(rest, decode_node(next_node, proof), value, proof)
     end
   end
 
-  defp int_verify_proof([], {:branch, [_|_] = branch}, value, _proof_db) when length(branch) == 17 do
-    get_branch_val(branch, 16) == value
+  def int_verify_proof([], {:branch, branch}, value, _) do
+    List.last(branch) == value
   end
 
-  defp int_verify_proof([], [_, val], value, _proof_db) when val == value, do: true
-  defp int_verify_proof([], val, value, _proof_db) when val ==  value, do: true
-  defp int_verify_proof([], _val, _value, _proof_db) , do: false
+  def int_verify_proof([nibble | rest] = path, {:branch, branch}, value, proof) do
+    case Enum.at(branch, nibble) do
+      [] ->
+        false
 
-  defp int_verify_proof([nibble | [] = nibbles], {:branch, branch}, value, proof_db) do
-    branch_val = get_branch_val(branch, nibble)
-    int_verify_proof(nibbles, decode_node(construct_val(branch_val), proof_db), value, proof_db)
-  end
-
-  defp int_verify_proof([_|_] = path, bin, value, proof_db) when is_binary(bin) do
-    int_verify_proof(path, decode_node(bin, proof_db), value, proof_db)
-  end
-
-  defp int_verify_proof([nibble | nibbles], {:branch, branch}, value, proof_db) do
-    branch_val = get_branch_val(branch, nibble)
-    int_verify_proof(nibbles, decode_node(construct_val(branch_val), proof_db), value, proof_db)
-  end
-
-  defp construct_val([_|_] = branch) when length(branch) == 17, do: {:branch, branch}
-  defp construct_val(bin) when is_binary(bin), do: bin
-  defp construct_val([k, v]), do: {:value, decode_path(k), v}
-
-  ## The node is 32 byte, so perhaps this is hash, so we will look up into db
-  defp decode_node(node, db) when byte_size(node) == 32 do
-    case read_from_db(db, node) do
-      {:ok, node} ->
-        ExRLP.decode(node) |> construct_val()
-
-      :not_found ->
-        ## TODO : handle it
-        :error
+      next_node ->
+        int_verify_proof(rest, decode_node(next_node, proof), value, proof)
     end
   end
 
-  defp decode_node(node, _db) when is_binary(node) do
-    ExRLP.decode(node) |> construct_val()
+  def int_verify_proof(path, {:leaf, shared_prefix, node_val}, value, _) do
+    node_val == value and path == shared_prefix
   end
 
-  defp decode_node([path, val], _db), do: {:value, path, val}
+  def int_verify_proof(_path, _node,  _value, _proof), do: false
 
-  defp decode_node({:branch, _} = branch, _db), do: branch
+  def decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
+    case read_from_db(proof, hash) do
+      {:ok, node} -> decode_node(ExRLP.decode(node), proof)
+      _ -> :error
+    end
+  end
 
-  defp decode_node([_|_] = branch, _db) when length(branch) == 17, do: {:branch, branch}
+  def decode_node(node, _proof) do
+      case node do
+        branches when length(branches) == 17 ->
+          {:branch, branches}
 
-  defp decode_node(any, _), do: any
+        [hp_k, v] ->
+          # extension or leaf node
+          {prefix, is_leaf} = HexPrefix.decode(hp_k)
 
-  defp decode_path(key) when is_binary(key), do: HexPrefix.decode(key)
+          if is_leaf do
+            {:leaf, prefix, v}
+          else
+            {:ext, prefix, v}
+          end
 
-  defp decode_path([key, _node]) when is_binary(key), do: HexPrefix.decode(key)
-
-  defp decode_path([_ | _]), do: []
-
-  defp get_branch_val(branch, at), do: Enum.at(branch, at)
+        _ ->
+          :error
+      end
+  end
 
   ## DB operations
 
@@ -186,6 +145,6 @@ defmodule MerklePatriciaTree.Proof do
     DB.put!(proof.db, hash, node)
   end
 
-  defp read_from_db(db, hash), do: MerklePatriciaTree.DB.get(db, hash)
+  def read_from_db(db, hash), do: DB.get(db, hash)
 
 end
