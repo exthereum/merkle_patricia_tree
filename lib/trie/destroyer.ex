@@ -52,7 +52,9 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         :empty -> :empty
         {:leaf, leaf_prefix, leaf_value} -> {:leaf, ext_prefix ++ leaf_prefix, leaf_value}
         {:ext, new_ext_prefix, new_ext_node_hash} -> {:ext, ext_prefix ++ new_ext_prefix, new_ext_node_hash}
-        els -> {:ext, ext_prefix, els |> Node.encode_node(trie)}
+        {:branch, val} ->
+          val = {:branch, List.replace_at(val, 16, "")}
+          {:ext, ext_prefix, val |> Node.encode_node(trie)}
       end
     end
   end
@@ -66,8 +68,13 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   defp trie_remove_key({:branch, branches}, [prefix_hd|prefix_tl], trie) when length(branches) == 17 do
     updated_branches = List.update_at(branches, prefix_hd, fn branch ->
       branch_node = branch |> Trie.into(trie) |> Node.decode_trie
-
-      trie_remove_key(branch_node, prefix_tl, trie) |> Node.encode_node(trie)
+      val =
+        case trie_remove_key(branch_node, prefix_tl, trie) do
+          {:branch, branch} = node ->
+            {:branch, List.replace_at(branch, 16, "")}
+          node -> node
+        end
+      val |> Node.encode_node(trie)
     end)
 
     non_blank_branches =
