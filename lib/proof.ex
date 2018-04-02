@@ -7,8 +7,12 @@ defmodule MerklePatriciaTree.Proof do
   alias MerklePatriciaTree.Trie.Helper
   alias MerklePatriciaTree.ListHelper
   alias MerklePatriciaTree.DB
-  alias MerklePatriciaTree.DB.LevelDB
 
+  @doc """
+  Building proof tree for given path by going through each node ot this path
+  and making new partial tree.
+  """
+  @spec construct_proof(Trie.t(), Trie.key(), Trie.t()) :: :ok
   def construct_proof({trie, key, proof_db}) do
     ## Inserting the value of the root hash into the proof db
     insert_proof_db(trie.root_hash, trie.db, proof_db)
@@ -43,7 +47,7 @@ defmodule MerklePatriciaTree.Proof do
 
       {:leaf, prefix, value} ->
         case nibbles do
-          ^prefix ->{value, proof}
+          ^prefix -> {value, proof}
           _ -> {nil, proof}
         end
 
@@ -77,6 +81,10 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
+  @doc """
+  Verifying that particular path leads to a given value.
+  """
+  @spec verify_proof(Trie.key(), Trie.value(), binary(), Trie.t()) :: :ok
   def verify_proof(key, value, hash, proof) do
     case decode_node(hash, proof) do
       :error -> false
@@ -84,18 +92,18 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  def int_verify_proof(path, {:ext, shared_prefix, next_node}, value, proof) do
+  defp int_verify_proof(path, {:ext, shared_prefix, next_node}, value, proof) do
     case ListHelper.get_postfix(path, shared_prefix) do
       nil -> false
       rest -> int_verify_proof(rest, decode_node(next_node, proof), value, proof)
     end
   end
 
-  def int_verify_proof([], {:branch, branch}, value, _) do
+  defp int_verify_proof([], {:branch, branch}, value, _) do
     List.last(branch) == value
   end
 
-  def int_verify_proof([nibble | rest] = path, {:branch, branch}, value, proof) do
+  defp int_verify_proof([nibble | rest], {:branch, branch}, value, proof) do
     case Enum.at(branch, nibble) do
       [] ->
         false
@@ -105,20 +113,20 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  def int_verify_proof(path, {:leaf, shared_prefix, node_val}, value, _) do
+  defp int_verify_proof(path, {:leaf, shared_prefix, node_val}, value, _) do
     node_val == value and path == shared_prefix
   end
 
-  def int_verify_proof(_path, _node,  _value, _proof), do: false
+  defp int_verify_proof(_path, _node,  _value, _proof), do: false
 
-  def decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
+  defp decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
     case read_from_db(proof, hash) do
       {:ok, node} -> decode_node(ExRLP.decode(node), proof)
       _ -> :error
     end
   end
 
-  def decode_node(node, _proof) do
+  defp decode_node(node, _proof) do
       case node do
         branches when length(branches) == 17 ->
           {:branch, branches}
@@ -145,6 +153,6 @@ defmodule MerklePatriciaTree.Proof do
     DB.put!(proof.db, hash, node)
   end
 
-  def read_from_db(db, hash), do: DB.get(db, hash)
+  defp read_from_db(db, hash), do: DB.get(db, hash)
 
 end
