@@ -28,7 +28,7 @@ defmodule MerklePatriciaTree.DB.ExternalDB do
   @spec get(db_handler(), Trie.key) :: {:ok, DB.value} | :not_found
   def get(%{get: db_handler}, key) do
     case db_handler.(key) do
-      {:ok, v} = result -> result
+      {:ok, _v} = result -> result
       _ -> :not_found
     end
   end

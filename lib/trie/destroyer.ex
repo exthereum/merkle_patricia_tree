@@ -39,7 +39,6 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   # Shed shared prefix and continue removal operation
   defp trie_remove_key({:ext, ext_prefix, node_hash}, key_prefix, trie) do
     {_matching_prefix, ext_tl, remaining_tl} = ListHelper.overlap(ext_prefix, key_prefix)
-
     unless length(ext_tl) == 0 do
       # Prefix doesn't match ext, do nothing.
       {:ext, ext_prefix, node_hash}
@@ -53,7 +52,11 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         {:leaf, leaf_prefix, leaf_value} -> {:leaf, ext_prefix ++ leaf_prefix, leaf_value}
         {:ext, new_ext_prefix, new_ext_node_hash} -> {:ext, ext_prefix ++ new_ext_prefix, new_ext_node_hash}
         {:branch, val} ->
-          val = {:branch, List.replace_at(val, 16, "")}
+          val =
+            case List.last(val) do
+              nil -> {:branch, List.replace_at(val, 16, "")}
+              _ -> {:branch, val}
+            end
           {:ext, ext_prefix, val |> Node.encode_node(trie)}
       end
     end
@@ -65,14 +68,43 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   end
 
   # Remove beneath a branch
-  defp trie_remove_key({:branch, branches}, [prefix_hd|prefix_tl], trie) when length(branches) == 17 do
+  defp trie_remove_key({:branch, branches}, [prefix_hd|prefix_tl] = p, trie) when length(branches) == 17 do
     updated_branches = List.update_at(branches, prefix_hd, fn branch ->
       branch_node = branch |> Trie.into(trie) |> Node.decode_trie
       val =
         case trie_remove_key(branch_node, prefix_tl, trie) do
           {:branch, branch} = node ->
-            {:branch, List.replace_at(branch, 16, "")}
-          node -> node
+            if prefix_tl == [] do
+              branch = List.delete_at(branch, 16)
+              non_blank_branches = non_blank_branches(branch)
+
+              if length(non_blank_branches) == 1 do
+                [[_, val]] = non_blank_branches
+                ## TODO : check why the `p` is not correct. It is shorter than it should be !!
+                {:leaf, p, val}
+              else
+                {:branch, List.replace_at(branch, 16, "")}
+              end
+            else
+              node
+            end
+          {:ext, _, branch} = node when is_list(branch) and length(branch) == 17 ->
+            # If the branch has only one value we return leaf instead
+
+            last = List.last branch
+            branch = List.delete_at(branch, 16)
+
+            non_blank_branches = non_blank_branches(branch)
+
+            if length(non_blank_branches) == 1 and last == "" do
+              [[_, val]] = non_blank_branches
+              {:leaf, p, val}
+            else
+              node
+            end
+
+          node ->
+            node
         end
       val |> Node.encode_node(trie)
     end)
@@ -87,8 +119,14 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
 
     cond do
       Enum.count(non_blank_branches) == 0 ->
-        # We just have a final value, this will need to percolate up
+      # We just have a final value, this will need to percolate up
+      # Empty string as value will be threated as ampty node
+      if final_value == "" do
+        :empty
+      else
         {:leaf, [] , final_value}
+      end
+
       Enum.count(non_blank_branches) == 1 and final_value == "" ->
         # We just have a node we need to percolate up
         {branch_node, i} = List.first(non_blank_branches)
@@ -96,8 +134,10 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         decoded_branch_node = Node.decode_trie(branch_node |> Trie.into(trie))
 
         case decoded_branch_node do
-          {:leaf, leaf_prefix, leaf_value} -> {:leaf, [i | leaf_prefix], leaf_value}
-          {:ext, ext_prefix, ext_node_hash} -> {:ext, [i | ext_prefix], ext_node_hash}
+          {:leaf, leaf_prefix, leaf_value} ->
+            {:leaf, [i | leaf_prefix], leaf_value}
+          {:ext, ext_prefix, ext_node_hash} ->
+            {:ext, [i | ext_prefix], ext_node_hash}
           {:branch, _branches} -> {:ext, [i], branch_node} # TODO: Is this illegal since ext has to have at least two nibbles?
         end
       true -> {:branch, updated_branches}
@@ -107,6 +147,14 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   # Merge into empty to create a leaf
   defp trie_remove_key(:empty, _prefix, _trie) do
     :empty
+  end
+
+  ## Returns a list of the non_blank_branches
+  defp non_blank_branches(branch) do
+      Enum.reduce(branch, [],
+        fn(elem, acc) ->
+          if elem != "" do acc ++ [elem] else acc end
+        end)
   end
 
 end
