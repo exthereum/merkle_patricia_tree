@@ -51,62 +51,26 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         :empty -> :empty
         {:leaf, leaf_prefix, leaf_value} -> {:leaf, ext_prefix ++ leaf_prefix, leaf_value}
         {:ext, new_ext_prefix, new_ext_node_hash} -> {:ext, ext_prefix ++ new_ext_prefix, new_ext_node_hash}
-        {:branch, val} ->
-          val =
-            case List.last(val) do
-              nil -> {:branch, List.replace_at(val, 16, "")}
-              _ -> {:branch, val}
-            end
-          {:ext, ext_prefix, val |> Node.encode_node(trie)}
+        els -> {:ext, ext_prefix, els |> Node.encode_node(trie)}
       end
     end
   end
 
   # Remove from a branch when directly on value
-  defp trie_remove_key({:branch, branches}, [], _trie) when length(branches) == 17 do
-    {:branch, List.replace_at(branches, 16, nil)}
+  defp trie_remove_key({:branch, branches}, [], trie) when length(branches) == 17 do
+    node = {:branch, List.replace_at(branches, 16, "")}
+    if List.last(branches) == nil do
+      node
+    else
+      try_to_reduce_branch(node, trie)
+    end
   end
 
   # Remove beneath a branch
-  defp trie_remove_key({:branch, branches}, [prefix_hd|prefix_tl] = p, trie) when length(branches) == 17 do
+  defp trie_remove_key({:branch, branches} = node, [prefix_hd|prefix_tl] = p, trie) when length(branches) == 17 do
     updated_branches = List.update_at(branches, prefix_hd, fn branch ->
       branch_node = branch |> Trie.into(trie) |> Node.decode_trie
-      val =
-        case trie_remove_key(branch_node, prefix_tl, trie) do
-          {:branch, branch} = node ->
-            if prefix_tl == [] do
-              branch = List.delete_at(branch, 16)
-              non_blank_branches = non_blank_branches(branch)
-
-              if length(non_blank_branches) == 1 do
-                [[_, val]] = non_blank_branches
-                ## TODO : check why the `p` is not correct. It is shorter than it should be !!
-                {:leaf, p, val}
-              else
-                {:branch, List.replace_at(branch, 16, "")}
-              end
-            else
-              node
-            end
-          {:ext, _, branch} = node when is_list(branch) and length(branch) == 17 ->
-            # If the branch has only one value we return leaf instead
-
-            last = List.last branch
-            branch = List.delete_at(branch, 16)
-
-            non_blank_branches = non_blank_branches(branch)
-
-            if length(non_blank_branches) == 1 and last == "" do
-              [[_, val]] = non_blank_branches
-              {:leaf, p, val}
-            else
-              node
-            end
-
-          node ->
-            node
-        end
-      val |> Node.encode_node(trie)
+      trie_remove_key(branch_node, prefix_tl, trie) |> Node.encode_node(trie)
     end)
 
     non_blank_branches =
@@ -116,17 +80,10 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
       |> Enum.filter(fn {branch, _} -> branch != @empty_branch end)
 
     final_value = List.last(updated_branches)
-
     cond do
       Enum.count(non_blank_branches) == 0 ->
-      # We just have a final value, this will need to percolate up
-      # Empty string as value will be threated as ampty node
-      if final_value == "" do
-        :empty
-      else
-        {:leaf, [] , final_value}
-      end
-
+        # We just have a final value, this will need to percolate up
+        {:leaf, [], final_value}
       Enum.count(non_blank_branches) == 1 and final_value == "" ->
         # We just have a node we need to percolate up
         {branch_node, i} = List.first(non_blank_branches)
@@ -134,13 +91,12 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         decoded_branch_node = Node.decode_trie(branch_node |> Trie.into(trie))
 
         case decoded_branch_node do
-          {:leaf, leaf_prefix, leaf_value} ->
-            {:leaf, [i | leaf_prefix], leaf_value}
-          {:ext, ext_prefix, ext_node_hash} ->
-            {:ext, [i | ext_prefix], ext_node_hash}
+          {:leaf, leaf_prefix, leaf_value} -> {:leaf, [i | leaf_prefix], leaf_value}
+          {:ext, ext_prefix, ext_node_hash} -> {:ext, [i | ext_prefix], ext_node_hash}
           {:branch, _branches} -> {:ext, [i], branch_node} # TODO: Is this illegal since ext has to have at least two nibbles?
         end
-      true -> {:branch, updated_branches}
+      true ->
+        {:branch, updated_branches}
     end
   end
 
@@ -149,12 +105,82 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
     :empty
   end
 
+  # Reduce branch node
+  def try_to_reduce_branch(branch, trie) do
+    case get_singleton_branch(branch) do
+      :error ->
+        branch
+
+      :none ->
+        :error ## This should not suppose to happened. Branch with bad arrity
+
+      {:value, value} ->
+        {:leaf, [], value}
+
+      {next, next_node} ->
+        case Node.decode_node(next_node) do
+          {:leaf, path, val} ->
+            {:leaf, [next] ++ path, val}
+
+          {:ext, path, val} ->
+            {:ext, [next] ++ path, val}
+
+          {:branch, _} ->
+            {:ext, [next], next_node}
+        end
+    end
+  end
+
+  def get_singleton_branch({:branch, branch} = b) do
+    init_acc =
+      case List.last(branch) do
+        value when value == nil or value == "" ->
+          :none
+
+          value ->
+          {:value, value}
+      end
+    get_singleton_branch(b, 0, init_acc)
+  end
+
+  ## We reached the end of the branch
+  def get_singleton_branch(_branch, n, res) when n > 15 do
+    res
+  end
+
+  ## Get next element of the branch.
+  ## If we have more than one element in our
+  ## accumulator, then we return `error`.
+  ## Means, the branch cannot be reduced
+  def get_singleton_branch({:branch, branch} = b, n, acc) do
+    node = Enum.at(branch, n)
+    case node == "" or node == nil do
+      true ->
+        get_singleton_branch(b, n + 1, acc)
+      false when acc != :none ->
+        ## More than one value
+        :error
+      false ->
+        ## First value
+        get_singleton_branch(b, n + 1, {n, node})
+    end
+  end
+
   ## Returns a list of the non_blank_branches
   defp non_blank_branches(branch) do
-      Enum.reduce(branch, [],
-        fn(elem, acc) ->
-          if elem != "" do acc ++ [elem] else acc end
-        end)
+    {_, pos, elements} = Enum.reduce(branch, {0, 0, []},
+      fn(elem, {count, pos, acc}) ->
+        if elem != "" do
+          {count + 1, count, acc ++ [elem]}
+        else
+          {count + 1, pos, acc}
+        end
+      end)
+    if pos == 0 do
+      {[], elements}
+    else
+      {[pos], elements}
+    end
   end
 
 end

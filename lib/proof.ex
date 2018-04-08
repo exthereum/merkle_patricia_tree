@@ -126,25 +126,7 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  defp decode_node(node, _proof) do
-      case node do
-        branches when length(branches) == 17 ->
-          {:branch, branches}
-
-        [hp_k, v] ->
-          # extension or leaf node
-          {prefix, is_leaf} = HexPrefix.decode(hp_k)
-
-          if is_leaf do
-            {:leaf, prefix, v}
-          else
-            {:ext, prefix, v}
-          end
-
-        _ ->
-          :error
-      end
-  end
+  defp decode_node(node, _proof), do: Node.decode_node(node)
 
   ## DB operations
 

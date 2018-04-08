@@ -4,6 +4,7 @@ defmodule MerklePatriciaTree.Trie do
   alias MerklePatriciaTree.Trie.Helper
   alias MerklePatriciaTree.Trie.Builder
   alias MerklePatriciaTree.Trie.Destroyer
+  alias MerklePatriciaTree.Trie.Inspector
   alias MerklePatriciaTree.Trie.Node
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.ListHelper
@@ -120,11 +121,11 @@ defmodule MerklePatriciaTree.Trie do
   end
 
   @doc """
-  Updates a trie by setting key equal to value. If value is nil,
-  we will instead remove `key` from the trie.
+  Removing a value for a given key and reorganize the
+  trie structure.
   """
-  @spec update(__MODULE__.t, __MODULE__.key, ExRLP.t | nil) :: __MODULE__.t
-  def update(trie, key, nil) do
+  @spec delete(__MODULE__.t, __MODULE__.key) :: __MODULE__.t
+  def delete(trie, key) do
     Node.decode_trie(trie)
     |> Destroyer.remove_key(Helper.get_nibbles(key), trie)
     |> Node.encode_node(trie)
@@ -132,11 +133,14 @@ defmodule MerklePatriciaTree.Trie do
     |> store
   end
 
+  @doc """
+  Updates a trie by setting key equal to value.
+  """
   def update(trie, key, value) do
     # We're going to recursively walk toward our key,
     # then we'll add our value (either a new leaf or the value
     # on a branch node), then we'll walk back up the tree and
-    # update all previous ndes. This may require changing the
+    # update all previous nodes. This may require changing the
     # type of the node.
     Node.decode_trie(trie)
     |> Builder.put_key(Helper.get_nibbles(key), value, trie)
