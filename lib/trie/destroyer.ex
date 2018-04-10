@@ -58,12 +58,8 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
 
   # Remove from a branch when directly on value
   defp trie_remove_key({:branch, branches}, [], trie) when length(branches) == 17 do
-    node = {:branch, List.replace_at(branches, 16, "")}
-    if List.last(branches) == nil do
-      node
-    else
-      try_to_reduce_branch(node, trie)
-    end
+    {:branch, List.replace_at(branches, 16, "")}
+    |> try_to_reduce_branch(trie)
   end
 
   # Remove beneath a branch
@@ -101,18 +97,21 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   end
 
   # Merge into empty to create a leaf
-  defp trie_remove_key(:empty, _prefix, _trie) do
-    :empty
-  end
+  defp trie_remove_key(:empty, _prefix, _trie), do: :empty
 
   # Reduce branch node
-  def try_to_reduce_branch(branch, trie) do
+  defp try_to_reduce_branch(branch, trie) do
     case get_singleton_branch(branch) do
+      ## More than one element in the branch
+      ## so we cannot delete it.
       :error ->
         branch
 
+      ## This should not suppose to happened.
+      ## We have empty branch.
+      ## TODO: Consider handlig the error.
       :none ->
-        :error ## This should not suppose to happened. Branch with bad arrity
+        :error
 
       {:value, value} ->
         {:leaf, [], value}
@@ -131,7 +130,7 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
     end
   end
 
-  def get_singleton_branch({:branch, branch} = b) do
+  defp get_singleton_branch({:branch, branch} = b) do
     init_acc =
       case List.last(branch) do
         value when value == nil or value == "" ->
@@ -144,15 +143,13 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   end
 
   ## We reached the end of the branch
-  def get_singleton_branch(_branch, n, res) when n > 15 do
-    res
-  end
+  defp get_singleton_branch(_branch, n, res) when n > 15, do: res
 
   ## Get next element of the branch.
   ## If we have more than one element in our
   ## accumulator, then we return `error`.
   ## Means, the branch cannot be reduced
-  def get_singleton_branch({:branch, branch} = b, n, acc) do
+  defp get_singleton_branch({:branch, branch} = b, n, acc) do
     node = Enum.at(branch, n)
     case node == "" or node == nil do
       true ->
@@ -163,23 +160,6 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
       false ->
         ## First value
         get_singleton_branch(b, n + 1, {n, node})
-    end
-  end
-
-  ## Returns a list of the non_blank_branches
-  defp non_blank_branches(branch) do
-    {_, pos, elements} = Enum.reduce(branch, {0, 0, []},
-      fn(elem, {count, pos, acc}) ->
-        if elem != "" do
-          {count + 1, count, acc ++ [elem]}
-        else
-          {count + 1, pos, acc}
-        end
-      end)
-    if pos == 0 do
-      {[], elements}
-    else
-      {[pos], elements}
     end
   end
 
