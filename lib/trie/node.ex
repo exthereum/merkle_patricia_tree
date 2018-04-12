@@ -51,7 +51,12 @@ defmodule MerklePatriciaTree.Trie.Node do
   def decode_node(node) do
     case node do
       branches when length(branches) == 17 ->
-        {:branch, branches}
+        decoded_branches = Enum.reduce(branches, [],
+          fn("", acc) -> acc ++ [""]
+            (elem, acc) when is_binary(elem) -> acc ++ [ExRLP.decode(elem)]
+            (elem, acc) -> acc
+          end)
+        {:branch, decoded_branches}
       [hp_k, v] ->
         # extension or leaf node
         {prefix, is_leaf} = HexPrefix.decode(hp_k)
