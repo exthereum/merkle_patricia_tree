@@ -39,6 +39,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
   """
   @spec put_node(ExRLP.t, Trie.t) :: binary()
   def put_node(rlp, trie) do
+    #IO.inspect("[STORE] put node : #{inspect(rlp)}")
     case ExRLP.encode(rlp) do
       encoded when byte_size(encoded) >= @max_rlp_len -> store(encoded, trie.db) # store large nodes
       encoded -> encoded

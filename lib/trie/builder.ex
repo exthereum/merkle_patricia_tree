@@ -45,7 +45,8 @@ defmodule MerklePatriciaTree.Trie.Builder do
 
   # Merge right onto an extension node, we'll need to push this down to our value
   defp trie_put_key({:ext, shared_prefix, node_hash}, new_prefix, new_value, trie) when shared_prefix == new_prefix do
-    {:ext, shared_prefix, Node.decode_trie(node_hash |> Trie.into(trie)) |> put_key([], new_value, trie)}
+    next_node = Node.decode_trie(node_hash |> Trie.into(trie)) |> put_key([], new_value, trie)
+    {:ext, shared_prefix, next_node}
   end
 
   # Merge leafs that share some prefix, this will cause us to construct an extension followed by a branch
@@ -71,22 +72,23 @@ defmodule MerklePatriciaTree.Trie.Builder do
           ext_encoded = {:ext, t, old_value} |> Node.encode_node(trie)
 
           {h, {:encoded, ext_encoded}}
-      end
-
-      {:ext, matching_prefix, build_branch([first, {new_tl, new_value}], trie) |> Node.encode_node(trie)}
+     end
+      branches = build_branch([first, {new_tl, new_value}], trie) |> Node.encode_node(trie)
+      {:ext, matching_prefix, branches}
     end
   end
 
   # Merge into a ext with no matches (i.e. create a branch)
   defp trie_put_key({:ext, old_prefix, old_value}, new_prefix, new_value, trie) do
     # TODO: Standardize with above
-    first = case old_prefix do
-      # [] -> {16, {:encoded, old_value}} # TODO: Is this right?
-      [h|[]] -> {h, {:encoded, old_value}}
-      [h|t] ->
-        ext_encoded = {:ext, t, old_value} |> Node.encode_node(trie)
-        {h, {:encoded, ext_encoded}}
-    end
+    first =
+      case old_prefix do
+        # [] -> {16, {:encoded, old_value}} # TODO: Is this right?
+        [h|[]] -> {h, {:encoded, old_value}}
+        [h|t] ->
+          ext_encoded = {:ext, t, old_value} |> Node.encode_node(trie)
+          {h, {:encoded, ext_encoded}}
+      end
     build_branch([first, {new_prefix, new_value}], trie)
   end
 
@@ -97,11 +99,8 @@ defmodule MerklePatriciaTree.Trie.Builder do
 
   # Merge down a branch node (recursively)
   defp trie_put_key({:branch, branches}, [prefix_hd|prefix_tl], value, trie) do
-    {:branch,
-      List.update_at(branches, prefix_hd, fn branch ->
+    {:branch, List.update_at(branches, prefix_hd, fn branch ->
         branch_node = branch |> Trie.into(trie) |> Node.decode_trie
-
-        # Maybe this one?
         put_key(branch_node, prefix_tl, value, trie) |> Node.encode_node(trie)
       end)
     }
@@ -123,8 +122,7 @@ defmodule MerklePatriciaTree.Trie.Builder do
 
           ({prefix, value}, acc) ->
             put_key(acc, prefix, value, trie)
-        end
-    )
+      end)
   end
 
 end

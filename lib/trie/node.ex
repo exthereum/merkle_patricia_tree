@@ -43,46 +43,83 @@ defmodule MerklePatriciaTree.Trie.Node do
   @spec encode_node(trie_node, Trie.t) :: nil | binary()
   def encode_node(trie_node, trie) do
     trie_node
-    |> encode_node_type()
+    |> encode_node_type(trie)
     |> Storage.put_node(trie)
   end
 
-  @spec decode_node(list()) :: trie_node
-  def decode_node(node) do
-    case node do
-      branches when length(branches) == 17 ->
-        decoded_branches = Enum.reduce(branches, [],
-          fn("", acc) -> acc ++ [""]
-            (elem, acc) when is_binary(elem) -> acc ++ [ExRLP.decode(elem)]
-            (elem, acc) -> acc
-          end)
-        {:branch, decoded_branches}
-      [hp_k, v] ->
-        # extension or leaf node
-        {prefix, is_leaf} = HexPrefix.decode(hp_k)
+  @spec decode_node(list(), Trie.t) :: trie_node
+  def decode_node(node, trie) do
+    res = case node do
+            branches when length(branches) == 17 ->
+              decoded_branches = Enum.reduce(branches, [],
+              fn("", acc) -> acc ++ [""]
 
-        if is_leaf do
-          {:leaf, prefix, v}
-        else
-          {:ext, prefix, v}
-        end
-    end
+                (elem, acc) when is_binary(elem) and byte_size(elem) == 32 ->
+                  {:ok, node} = MerklePatriciaTree.DB.get(trie.db, elem)
+                acc ++ [ExRLP.decode(node)]
+
+                (elem, acc) when is_binary(elem) ->
+                  acc ++ [ExRLP.decode(elem)]
+              end)
+
+              {:branch, decoded_branches}
+            [hp_k, v] ->
+              # extension or leaf node
+              {prefix, is_leaf} = HexPrefix.decode(hp_k)
+
+              if is_leaf do
+                {:leaf, prefix, v}
+              else
+                {:ext, prefix, v}
+              end
+          end
+    res
   end
 
-  defp encode_node_type({:leaf, key, value}) do
+  defp encode_node_type({:leaf, key, value}, trie) do
     [HexPrefix.encode({key, true}), value]
   end
 
-  defp encode_node_type({:branch, branches}) when length(branches) == 17 do
-    branches
+  defp encode_node_type({:branch, branches}, trie) when length(branches) == 17 do
+    last = List.last(branches)
+    branch_nodes = List.delete_at(branches, 16)
+    encoded_branch = Enum.reduce(branch_nodes, [],
+      fn("", acc) -> acc ++ [""]
+
+        (elem, acc) when is_list(elem) ->
+          encoded_elem = ExRLP.encode(elem)
+
+          if byte_size(encoded_elem) < 32 do
+            acc ++ [encoded_elem]
+          else
+            {:ok, hash} = :enacl.generichash(32, encoded_elem)
+            MerklePatriciaTree.DB.put!(trie.db, hash, encoded_elem)
+            acc ++ [hash]
+          end
+
+        (elem, acc) -> acc ++ [elem]
+      end)
+
+    encoded_branch ++ [last]
+
   end
 
-  defp encode_node_type({:ext, shared_prefix, next_node}) do
-    [HexPrefix.encode({shared_prefix, false}), next_node]
+  defp encode_node_type({:ext, shared_prefix, next_node}, trie) when is_list(next_node) do
+    encode_node_type({:ext, shared_prefix, ExRLP.encode(next_node)}, trie)
+  end
+  defp encode_node_type({:ext, shared_prefix, next_node}, trie) do
+    node = if byte_size(next_node) == 32 do
+      [HexPrefix.encode({shared_prefix, false}), next_node]
+    else
+      {:ok, node_hash} = :enacl.generichash(32, next_node)
+
+      MerklePatriciaTree.DB.put!(trie.db, node_hash, next_node)
+      [HexPrefix.encode({shared_prefix, false}), node_hash]
+    end
   end
 
-  defp encode_node_type(:empty) do
-    <<>>
+  defp encode_node_type(:empty, _trie) do
+    ""
   end
 
   @doc """
@@ -115,7 +152,7 @@ defmodule MerklePatriciaTree.Trie.Node do
       <<>> -> :empty
       :not_found -> :empty
       node ->
-        decode_node(node)
+        decode_node(node, trie)
       end
   end
 end

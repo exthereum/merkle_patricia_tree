@@ -126,7 +126,7 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  defp decode_node(node, _proof), do: Node.decode_node(node)
+  defp decode_node(node, proof), do: Node.decode_node(node, proof)
 
   ## DB operations
 
