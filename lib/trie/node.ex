@@ -48,35 +48,31 @@ defmodule MerklePatriciaTree.Trie.Node do
   end
 
   @spec decode_node(list(), Trie.t) :: trie_node
-  def decode_node(node, trie) do
-    res = case node do
-            branches when length(branches) == 17 ->
-              decoded_branches = Enum.reduce(branches, [],
-              fn("", acc) -> acc ++ [""]
+  def decode_node(branches, trie) when length(branches) == 17 do
+    {:branch, Enum.reduce(branches, [],
+      fn("", acc) ->
+        acc ++ [""]
 
-                (elem, acc) when is_binary(elem) and byte_size(elem) == 32 ->
-                  {:ok, node} = MerklePatriciaTree.DB.get(trie.db, elem)
-                acc ++ [ExRLP.decode(node)]
+        (elem, acc) when is_binary(elem) and byte_size(elem) == 32 ->
+          {:ok, node} = MerklePatriciaTree.DB.get(trie.db, elem)
+        acc ++ [ExRLP.decode(node)]
 
-                (elem, acc) when is_binary(elem) ->
-                  acc ++ [ExRLP.decode(elem)]
-              end)
-
-              {:branch, decoded_branches}
-            [hp_k, v] ->
-              # extension or leaf node
-              {prefix, is_leaf} = HexPrefix.decode(hp_k)
-
-              if is_leaf do
-                {:leaf, prefix, v}
-              else
-                {:ext, prefix, v}
-              end
-          end
-    res
+        (elem, acc) when is_binary(elem) ->
+          acc ++ [ExRLP.decode(elem)]
+      end)}
   end
 
-  defp encode_node_type({:leaf, key, value}, trie) do
+  def decode_node([hp_k, v], _trie) do
+    {prefix, is_leaf} = HexPrefix.decode(hp_k)
+
+    if is_leaf do
+      {:leaf, prefix, v}
+    else
+      {:ext, prefix, v}
+    end
+  end
+
+  defp encode_node_type({:leaf, key, value}, _trie) do
     [HexPrefix.encode({key, true}), value]
   end
 
@@ -108,7 +104,7 @@ defmodule MerklePatriciaTree.Trie.Node do
     encode_node_type({:ext, shared_prefix, ExRLP.encode(next_node)}, trie)
   end
   defp encode_node_type({:ext, shared_prefix, next_node}, trie) do
-    node = if byte_size(next_node) == 32 do
+    if byte_size(next_node) == 32 do
       [HexPrefix.encode({shared_prefix, false}), next_node]
     else
       {:ok, node_hash} = :enacl.generichash(32, next_node)
@@ -118,9 +114,7 @@ defmodule MerklePatriciaTree.Trie.Node do
     end
   end
 
-  defp encode_node_type(:empty, _trie) do
-    ""
-  end
+  defp encode_node_type(:empty, _trie), do: ""
 
   @doc """
   Decodes the root of a given trie, effectively

@@ -15,15 +15,14 @@ defmodule MerklePatriciaTree.Proof do
   @spec construct_proof(Trie.t(), Trie.key(), Trie.t()) :: :ok
   def construct_proof({trie, key, proof_db}) do
     ## Inserting the value of the root hash into the proof db
-    insert_proof_db(trie.root_hash, trie.db, proof_db)
+    node = insert_proof_db(trie.root_hash, trie.db, proof_db)
 
     ## Constructing the proof trie going through the rest of the nodes
-    next_node = Trie.get_next_node(trie.root_hash, trie)
-    construct_proof(next_node, Helper.get_nibbles(key), proof_db)
+    construct_proof({ExRLP.decode(node), trie}, Helper.get_nibbles(key), proof_db)
   end
 
-  defp construct_proof(trie, nibbles=[nibble| rest], proof) do
-    case Node.decode_trie(trie) do
+  defp construct_proof({node, trie}, nibbles=[nibble| rest], proof) do
+    case decode_node(node, trie) do
       :empty ->
         {nil, proof}
 
@@ -34,15 +33,11 @@ defmodule MerklePatriciaTree.Proof do
             {nil, proof}
 
           node_hash when is_binary(node_hash) and byte_size(node_hash) == 32 ->
-
-            insert_proof_db(node_hash, trie.db, proof)
-            construct_proof(
-              Trie.get_next_node(node_hash, trie), rest, proof
-            )
+            node = insert_proof_db(node_hash, trie.db, proof)
+            construct_proof({node, trie}, rest, proof)
 
           node_hash ->
-            construct_proof(Trie.get_next_node(node_hash, trie), rest, proof)
-
+            construct_proof({node_hash, trie}, rest, proof)
         end
 
       {:leaf, prefix, value} ->
@@ -55,21 +50,21 @@ defmodule MerklePatriciaTree.Proof do
         # extension, continue walking tree if we match
         case ListHelper.get_postfix(nibbles, shared_prefix) do
           nil -> {nil, proof} # did not match extension node
-          rest -> construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+          rest -> construct_proof({next_node, trie}, rest, proof)
         end
 
       {:ext, shared_prefix, next_node} ->
         case ListHelper.get_postfix(nibbles, shared_prefix) do
           nil  -> {nil, proof}
           rest ->
-            insert_proof_db(next_node, trie.db, proof)
-            construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+            node = insert_proof_db(next_node, trie.db, proof)
+            construct_proof({node, trie}, rest, proof)
         end
     end
   end
 
-  defp construct_proof(trie, [], proof) do
-    case Node.decode_trie(trie) do
+  defp construct_proof({node, trie}, [], proof) do
+    case Node.decode_node(node, trie) do
       {:branch, branches} ->
         {List.last(branches), proof}
 
@@ -86,7 +81,9 @@ defmodule MerklePatriciaTree.Proof do
   """
   @spec verify_proof(Trie.key(), Trie.value(), binary(), Trie.t()) :: :ok
   def verify_proof(key, value, hash, proof) do
-    case decode_node(hash, proof) do
+    ## TODO : handle when there is no value into the db
+    {:ok, node} = read_from_db(proof.db, hash)
+    case decode_node(ExRLP.decode(node), proof) do
       :error -> false
       node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
     end
@@ -120,19 +117,31 @@ defmodule MerklePatriciaTree.Proof do
   defp int_verify_proof(_path, _node,  _value, _proof), do: false
 
   defp decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
-    case read_from_db(proof, hash) do
-      {:ok, node} -> decode_node(ExRLP.decode(node), proof)
+    case read_from_db(proof.db, hash) do
+      {:ok, node} -> decode_node(node, proof)
       _ -> :error
     end
   end
 
-  defp decode_node(node, proof), do: Node.decode_node(node, proof)
+  defp decode_node(node, proof) do
+    case node do
+      node when is_list(node) and length(node) == 17 ->
+        {:branch, node}
+
+      node when is_binary(node) ->
+        decode_node(ExRLP.decode(node), proof)
+
+      node ->
+        Node.decode_node(node, proof)
+    end
+  end
 
   ## DB operations
 
   defp insert_proof_db(hash, db, proof) do
     {:ok, node} = DB.get(db, hash)
-    DB.put!(proof.db, hash, node)
+    :ok = DB.put!(proof.db, hash, node)
+    node
   end
 
   defp read_from_db(db, hash), do: DB.get(db, hash)

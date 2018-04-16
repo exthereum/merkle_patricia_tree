@@ -1,6 +1,5 @@
 defmodule MerklePatriciaTree.TrieTest do
   use ExUnit.Case, async: true
-  #doctest MerklePatriciaTree.Trie
 
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Trie.Verifier
@@ -21,7 +20,7 @@ defmodule MerklePatriciaTree.TrieTest do
     trie = create_trie(trie_list, empty_trie)
 
     Enum.each(trie_list, fn {key, value} ->
-      ^value = Trie.get(trie, key)
+      assert ^value = Trie.get(trie, key)
     end)
   end
 

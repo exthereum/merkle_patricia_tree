@@ -15,7 +15,7 @@ defmodule MerklePatriciaTreeProofTest do
       {^value, proof} =
         Proof.construct_proof({trie, key, proof_trie})
 
-      assert :true = Proof.verify_proof(key, value, trie.root_hash, proof.db)
+      assert :true = Proof.verify_proof(key, value, trie.root_hash, proof)
 
       {_, proof_ref} = proof.db
       assert :ok = Exleveldb.close(proof_ref)
