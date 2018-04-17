@@ -19,7 +19,7 @@ defmodule MerklePatriciaTree.TrieTest do
   end
 
   @tag timeout: 100_000_000
-  test "Simple node from trie", %{db: db} do
+  test "Delete a node from trie", %{db: db} do
     trie =
       Trie.new(db)
       |> Trie.update(<<15::4, 10::4, 5::4, 11::4, 5::4, 1::4>>, "a")
@@ -99,7 +99,7 @@ defmodule MerklePatriciaTree.TrieTest do
       :rand.uniform(15)::4>>
   end
 
-  def random_value(), do: Test.random_string(32)
+  def random_value(), do: Test.random_string(40)
 
   def reduce_trie(num_nodes, list) do
     popup_random_from_trie(

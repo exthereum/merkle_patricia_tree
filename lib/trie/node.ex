@@ -9,6 +9,8 @@ defmodule MerklePatriciaTree.Trie.Node do
 
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Trie.Storage
+  alias MerklePatriciaTree.DB
+  alias MerklePatriciaTree.Test
 
   @type trie_node ::
     :empty |
@@ -54,8 +56,8 @@ defmodule MerklePatriciaTree.Trie.Node do
         acc ++ [""]
 
         (elem, acc) when is_binary(elem) and byte_size(elem) == 32 ->
-          {:ok, node} = MerklePatriciaTree.DB.get(trie.db, elem)
-        acc ++ [ExRLP.decode(node)]
+          {:ok, node} = DB.get(trie.db, elem)
+          acc ++ [ExRLP.decode(node)]
 
         (elem, acc) when is_binary(elem) ->
           acc ++ [ExRLP.decode(elem)]
@@ -77,9 +79,7 @@ defmodule MerklePatriciaTree.Trie.Node do
   end
 
   defp encode_node_type({:branch, branches}, trie) when length(branches) == 17 do
-    last = List.last(branches)
-    branch_nodes = List.delete_at(branches, 16)
-    encoded_branch = Enum.reduce(branch_nodes, [],
+    Enum.reduce(branches, [],
       fn("", acc) -> acc ++ [""]
 
         (elem, acc) when is_list(elem) ->
@@ -88,29 +88,26 @@ defmodule MerklePatriciaTree.Trie.Node do
           if byte_size(encoded_elem) < 32 do
             acc ++ [encoded_elem]
           else
-            {:ok, hash} = :enacl.generichash(32, encoded_elem)
-            MerklePatriciaTree.DB.put!(trie.db, hash, encoded_elem)
+            hash = Test.hash(encoded_elem)
+            DB.put!(trie.db, hash, encoded_elem)
             acc ++ [hash]
           end
 
         (elem, acc) -> acc ++ [elem]
       end)
-
-    encoded_branch ++ [last]
-
   end
 
   defp encode_node_type({:ext, shared_prefix, next_node}, trie) when is_list(next_node) do
     encode_node_type({:ext, shared_prefix, ExRLP.encode(next_node)}, trie)
   end
+
   defp encode_node_type({:ext, shared_prefix, next_node}, trie) do
     if byte_size(next_node) == 32 do
       [HexPrefix.encode({shared_prefix, false}), next_node]
     else
-      {:ok, node_hash} = :enacl.generichash(32, next_node)
-
-      MerklePatriciaTree.DB.put!(trie.db, node_hash, next_node)
-      [HexPrefix.encode({shared_prefix, false}), node_hash]
+      hash = Test.hash(next_node)
+      MerklePatriciaTree.DB.put!(trie.db, hash, next_node)
+      [HexPrefix.encode({shared_prefix, false}), hash]
     end
   end
 

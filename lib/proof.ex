@@ -131,7 +131,7 @@ defmodule MerklePatriciaTree.Proof do
       node when is_binary(node) ->
         decode_node(ExRLP.decode(node), proof)
 
-      node ->
+      node when is_list(node) ->
         Node.decode_node(node, proof)
     end
   end

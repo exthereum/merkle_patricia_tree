@@ -7,6 +7,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.Trie
+  alias MerklePatriciaTree.Test
 
   @max_rlp_len 32
 
@@ -39,7 +40,6 @@ defmodule MerklePatriciaTree.Trie.Storage do
   """
   @spec put_node(ExRLP.t, Trie.t) :: binary()
   def put_node(rlp, trie) do
-    #IO.inspect("[STORE] put node : #{inspect(rlp)}")
     case ExRLP.encode(rlp) do
       encoded when byte_size(encoded) >= @max_rlp_len -> store(encoded, trie.db) # store large nodes
       encoded -> encoded
@@ -51,11 +51,10 @@ defmodule MerklePatriciaTree.Trie.Storage do
   """
   @spec store(ExRLP.t, MerklePatriciaTree.DB.db) :: binary()
   def store(rlp_encoded_node, db) do
-    {:ok, node_hash} = :enacl.generichash(32, rlp_encoded_node)
+    hash = Test.hash(rlp_encoded_node)
+    DB.put!(db, hash, rlp_encoded_node) # store in db
 
-    DB.put!(db, node_hash, rlp_encoded_node) # store in db
-
-    node_hash # return hash
+    hash # return hash
   end
 
   @doc """
