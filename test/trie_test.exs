@@ -2,22 +2,16 @@ defmodule MerklePatriciaTree.TrieTest do
   use ExUnit.Case, async: true
 
   alias MerklePatriciaTree.Trie
-  alias MerklePatriciaTree.Trie.Verifier
   alias MerklePatriciaTree.Test
 
-  @max_32_bits 4294967296
-
   setup do
-    db = Test.random_ets_db()
-    {:ok, %{db: db}}
+    {:ok, %{db: Test.random_ets_db()}}
   end
 
   @tag timeout: 100_000_000
   test "Read from random trie", %{db: db} do
-    empty_trie = Trie.new(db)
-
-    trie_list = get_random_tree_list(5)
-    trie = create_trie(trie_list, empty_trie)
+    trie_list = get_random_tree_list(1000)
+    trie = create_trie(trie_list, Trie.new(db))
 
     Enum.each(trie_list, fn {key, value} ->
       assert ^value = Trie.get(trie, key)
@@ -48,10 +42,8 @@ defmodule MerklePatriciaTree.TrieTest do
     full_trie_list =
       Enum.uniq_by(get_random_tree_list(10_000), fn {x, _} -> x end)
 
-      full_trie = Enum.reduce(full_trie_list, init_trie1,
-      fn({key, val}, acc_trie) ->
-          MerklePatriciaTree.Trie.update(acc_trie, key, val)
-      end)
+    full_trie = Enum.reduce(full_trie_list, init_trie1,
+      fn({key, val}, acc_trie) -> Trie.update(acc_trie, key, val) end)
 
     ## Reducing the full list trie randomly and
     ## getting the removed keys as well.
@@ -86,29 +78,6 @@ defmodule MerklePatriciaTree.TrieTest do
     end)
   end
 
-  def leaf_node(key_end, value) do
-    [HexPrefix.encode({key_end, true}), value]
-  end
-
-  def store(node_value, db) do
-    node_hash = :keccakf1600.sha3_256(node_value)
-    MerklePatriciaTree.DB.put!(db, node_hash, node_value)
-
-    node_hash
-  end
-
-  def extension_node(shared_nibbles, node_hash) do
-    [HexPrefix.encode({shared_nibbles, false}), node_hash]
-  end
-
-  def branch_node(branches, value) when length(branches) == 16 do
-    branches ++ [value]
-  end
-
-  def blanks(n) do
-    for _ <- 1..n, do: []
-  end
-
   def random_hex_key() do
     <<:rand.uniform(15)::4,
       :rand.uniform(15)::4,
@@ -130,9 +99,7 @@ defmodule MerklePatriciaTree.TrieTest do
       :rand.uniform(15)::4>>
   end
 
-  def random_value() do
-    <<:rand.uniform(@max_32_bits)::32>>
-  end
+  def random_value(), do: Test.random_string(32)
 
   def reduce_trie(num_nodes, list) do
     popup_random_from_trie(

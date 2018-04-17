@@ -4,6 +4,7 @@ defmodule MerklePatriciaTreeProofTest do
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.DB.LevelDB
   alias MerklePatriciaTree.Proof
+  alias MerklePatriciaTree.Test
 
   @tag :proof_test_success
   @tag timeout: 30_000_000
@@ -38,7 +39,7 @@ defmodule MerklePatriciaTreeProofTest do
   end
 
   def get_random_tree_list() do
-    for _ <- 0..1_000, do: {random_key(), random_value(12)}
+    for _ <- 0..1_000, do: {random_key(), random_value(40)}
   end
 
   def random_key() do
@@ -63,6 +64,6 @@ defmodule MerklePatriciaTreeProofTest do
       :rand.uniform(15)::4>>
   end
 
-  defp random_value(len), do: MerklePatriciaTree.Test.random_string(len)
+  defp random_value(len), do: Test.random_string(len)
 
 end
