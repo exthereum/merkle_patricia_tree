@@ -7,7 +7,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.Trie
-  alias MerklePatriciaTree.Test
+  alias MerklePatriciaTree.Utils
 
   @max_rlp_len 32
 
@@ -51,7 +51,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
   """
   @spec store(ExRLP.t, MerklePatriciaTree.DB.db) :: binary()
   def store(rlp_encoded_node, db) do
-    hash = Test.hash(rlp_encoded_node)
+    hash = Utils.hash(rlp_encoded_node)
     DB.put!(db, hash, rlp_encoded_node) # store in db
 
     hash # return hash

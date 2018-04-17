@@ -2,10 +2,11 @@ defmodule MerklePatriciaTree.TrieTest do
   use ExUnit.Case, async: true
 
   alias MerklePatriciaTree.Trie
-  alias MerklePatriciaTree.Test
+  alias MerklePatriciaTree.Utils
+  alias MerklePatriciaTree.DB.ETS
 
   setup do
-    {:ok, %{db: Test.random_ets_db()}}
+    {:ok, %{db: ETS.random_ets_db()}}
   end
 
   @tag timeout: 100_000_000
@@ -36,8 +37,8 @@ defmodule MerklePatriciaTree.TrieTest do
 
   @tag timeout: 100_000_000
   test "Delete random nodes from random trie" do
-    %{db: {_, db_ref1}} = init_trie1 = Trie.new(Test.random_ets_db)
-    %{db: {_, db_ref2}} = init_trie2 = Trie.new(Test.random_ets_db)
+    %{db: {_, db_ref1}} = init_trie1 = Trie.new(ETS.random_ets_db)
+    %{db: {_, db_ref2}} = init_trie2 = Trie.new(ETS.random_ets_db)
 
     full_trie_list =
       Enum.uniq_by(get_random_tree_list(10_000), fn {x, _} -> x end)
@@ -99,7 +100,7 @@ defmodule MerklePatriciaTree.TrieTest do
       :rand.uniform(15)::4>>
   end
 
-  def random_value(), do: Test.random_string(40)
+  def random_value(), do: Utils.random_string(40)
 
   def reduce_trie(num_nodes, list) do
     popup_random_from_trie(

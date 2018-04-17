@@ -4,7 +4,8 @@ defmodule MerklePatriciaTreeProofTest do
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.DB.LevelDB
   alias MerklePatriciaTree.Proof
-  alias MerklePatriciaTree.Test
+  alias MerklePatriciaTree.Utils
+  alias MerklePatriciaTree.DB.ETS
 
   @tag :proof_test_success
   @tag timeout: 30_000_000
@@ -64,6 +65,6 @@ defmodule MerklePatriciaTreeProofTest do
       :rand.uniform(15)::4>>
   end
 
-  defp random_value(len), do: Test.random_string(len)
+  defp random_value(len), do: Utils.random_string(len)
 
 end
