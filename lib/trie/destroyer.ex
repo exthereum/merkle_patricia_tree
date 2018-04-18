@@ -40,7 +40,10 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   defp trie_remove_key({:ext, ext_prefix, node_hash}, key_prefix, trie) do
     {_matching_prefix, ext_tl, remaining_tl} = ListHelper.overlap(ext_prefix, key_prefix)
 
-    if ext_tl |> Enum.empty?() do
+    unless length(ext_tl) == 0 do
+      # Prefix doesn't match ext, do nothing.
+      {:ext, ext_prefix, node_hash}
+    else
       existing_node = Node.decode_trie(node_hash |> Trie.into(trie))
       updated_node = trie_remove_key(existing_node, remaining_tl, trie)
 
@@ -58,15 +61,13 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         els ->
           {:ext, ext_prefix, els |> Node.encode_node(trie)}
       end
-    else
-      # Prefix doesn't match ext, do nothing.
-      {:ext, ext_prefix, node_hash}
     end
   end
 
   # Remove from a branch when directly on value
-  defp trie_remove_key({:branch, branches}, [], _trie) when length(branches) == 17 do
-    {:branch, List.replace_at(branches, 16, nil)}
+  defp trie_remove_key({:branch, branches}, [], trie) when length(branches) == 17 do
+    {:branch, List.replace_at(branches, 16, "")}
+    |> try_to_reduce_branch(trie)
   end
 
   # Remove beneath a branch
@@ -75,8 +76,7 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
     updated_branches =
       List.update_at(branches, prefix_hd, fn branch ->
         branch_node = branch |> Trie.into(trie) |> Node.decode_trie()
-
-        branch_node |> trie_remove_key(prefix_tl, trie) |> Node.encode_node(trie)
+        trie_remove_key(branch_node, prefix_tl, trie) |> Node.encode_node(trie)
       end)
 
     non_blank_branches =
@@ -116,7 +116,73 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   end
 
   # Merge into empty to create a leaf
-  defp trie_remove_key(:empty, _prefix, _trie) do
-    :empty
+  defp trie_remove_key(:empty, _prefix, _trie), do: :empty
+
+  # Reduce branch node
+  defp try_to_reduce_branch(branch, _trie) do
+    case get_singleton_branch(branch) do
+      ## More than one element in the branch
+      ## so we cannot delete it.
+      :error ->
+        branch
+
+      ## This should not suppose to happened.
+      ## We have empty branch.
+      ## TODO: Consider handlig the error.
+      :none ->
+        :error
+
+      {:value, value} ->
+        {:leaf, [], value}
+
+      {next, next_node} ->
+        case Node.decode_node(next_node) do
+          {:leaf, path, val} ->
+            {:leaf, [next] ++ path, val}
+
+          {:ext, path, val} ->
+            {:ext, [next] ++ path, val}
+
+          {:branch, _} ->
+            {:ext, [next], next_node}
+        end
+    end
+  end
+
+  defp get_singleton_branch({:branch, branch} = b) do
+    init_acc =
+      case List.last(branch) do
+        value when value == nil or value == "" ->
+          :none
+
+        value ->
+          {:value, value}
+      end
+
+    get_singleton_branch(b, 0, init_acc)
+  end
+
+  ## We reached the end of the branch
+  defp get_singleton_branch(_branch, n, res) when n > 15, do: res
+
+  ## Get next element of the branch.
+  ## If we have more than one element in our
+  ## accumulator, then we return `error`.
+  ## Means, the branch cannot be reduced
+  defp get_singleton_branch({:branch, branch} = b, n, acc) do
+    node = Enum.at(branch, n)
+
+    case node == "" or node == nil do
+      true ->
+        get_singleton_branch(b, n + 1, acc)
+
+      false when acc != :none ->
+        ## More than one value
+        :error
+
+      false ->
+        ## First value
+        get_singleton_branch(b, n + 1, {n, node})
+    end
   end
 end

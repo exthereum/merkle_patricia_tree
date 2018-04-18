@@ -47,6 +47,24 @@ defmodule MerklePatriciaTree.Trie.Node do
     |> Storage.put_node(trie)
   end
 
+  @spec decode_node(list()) :: trie_node
+  def decode_node(node) do
+    case node do
+      branches when length(branches) == 17 ->
+        {:branch, branches}
+
+      [hp_k, v] ->
+        # extension or leaf node
+        {prefix, is_leaf} = HexPrefix.decode(hp_k)
+
+        if is_leaf do
+          {:leaf, prefix, v}
+        else
+          {:ext, prefix, v}
+        end
+    end
+  end
+
   defp encode_node_type({:leaf, key, value}) do
     [HexPrefix.encode({key, true}), value]
   end
@@ -98,18 +116,8 @@ defmodule MerklePatriciaTree.Trie.Node do
       :not_found ->
         :empty
 
-      branches when length(branches) == 17 ->
-        {:branch, branches}
-
-      [hp_k, v] ->
-        # extension or leaf node
-        {prefix, is_leaf} = HexPrefix.decode(hp_k)
-
-        if is_leaf do
-          {:leaf, prefix, v}
-        else
-          {:ext, prefix, v}
-        end
+      node ->
+        decode_node(node)
     end
   end
 end

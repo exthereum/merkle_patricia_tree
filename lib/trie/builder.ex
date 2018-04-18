@@ -53,19 +53,6 @@ defmodule MerklePatriciaTree.Trie.Builder do
     build_branch([{old_prefix, old_value}, {new_prefix, new_value}], trie)
   end
 
-  # Merge right onto an extension node, we'll need to push this down to our value
-  # TODO: dialyzer found that this method can not succeed and it is true
-  # defp trie_put_key({:ext, shared_prefix, node_hash}, new_prefix, new_value, trie)
-  #      when shared_prefix == new_prefix do
-  #   branch =
-  #     node_hash
-  #     |> Trie.into(trie)
-  #     |> put_key([], new_value, trie)
-  #     |> Node.decode_trie()
-
-  #   {:ext, shared_prefix, branch}
-  # end
-
   # Merge leafs that share some prefix, this will cause us to construct an extension followed by a branch
   defp trie_put_key(
          {:ext, [old_prefix_hd | _old_prefix_tl] = old_prefix, old_value},
