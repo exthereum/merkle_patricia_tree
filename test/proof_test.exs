@@ -10,12 +10,11 @@ defmodule MerklePatriciaTreeProofTest do
   test "Proof Success Tests" do
     {trie, list} = create_random_trie_test()
 
-    Enum.each(list, fn({key, value}) ->
+    Enum.each(list, fn {key, value} ->
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie"))
-      {^value, proof} =
-        Proof.construct_proof({trie, key, proof_trie})
+      {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
 
-      assert :true = Proof.verify_proof(key, value, trie.root_hash, proof.db)
+      assert true = Proof.verify_proof(key, value, trie.root_hash, proof.db)
 
       {_, proof_ref} = proof.db
       assert :ok = Exleveldb.close(proof_ref)
@@ -30,10 +29,10 @@ defmodule MerklePatriciaTreeProofTest do
     list = get_random_tree_list()
 
     trie =
-      Enum.reduce(list, db_ref,
-        fn({key, val}, acc_trie) ->
-          Trie.update(acc_trie, key, val)
-        end)
+      Enum.reduce(list, db_ref, fn {key, val}, acc_trie ->
+        Trie.update(acc_trie, key, val)
+      end)
+
     {trie, list}
   end
 
@@ -42,27 +41,12 @@ defmodule MerklePatriciaTreeProofTest do
   end
 
   def random_key() do
-
-    <<:rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4,
-      :rand.uniform(15)::4>>
+    <<:rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
+      :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
+      :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
+      :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
+      :rand.uniform(15)::4, :rand.uniform(15)::4>>
   end
 
   defp random_value(len), do: MerklePatriciaTree.Test.random_string(len)
-
 end

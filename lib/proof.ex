@@ -1,5 +1,4 @@
 defmodule MerklePatriciaTree.Proof do
-
   require Integer
 
   alias MerklePatriciaTree.Trie
@@ -22,7 +21,7 @@ defmodule MerklePatriciaTree.Proof do
     construct_proof(next_node, Helper.get_nibbles(key), proof_db)
   end
 
-  defp construct_proof(trie, nibbles=[nibble| rest], proof) do
+  defp construct_proof(trie, nibbles = [nibble | rest], proof) do
     case Node.decode_trie(trie) do
       :empty ->
         {nil, proof}
@@ -34,15 +33,16 @@ defmodule MerklePatriciaTree.Proof do
             {nil, proof}
 
           node_hash when is_binary(node_hash) and byte_size(node_hash) == 32 ->
-
             insert_proof_db(node_hash, trie.db, proof)
+
             construct_proof(
-              Trie.get_next_node(node_hash, trie), rest, proof
+              Trie.get_next_node(node_hash, trie),
+              rest,
+              proof
             )
 
           node_hash ->
             construct_proof(Trie.get_next_node(node_hash, trie), rest, proof)
-
         end
 
       {:leaf, prefix, value} ->
@@ -54,13 +54,19 @@ defmodule MerklePatriciaTree.Proof do
       {:ext, shared_prefix, next_node} when is_list(next_node) ->
         # extension, continue walking tree if we match
         case ListHelper.get_postfix(nibbles, shared_prefix) do
-          nil -> {nil, proof} # did not match extension node
-          rest -> construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+          # did not match extension node
+          nil ->
+            {nil, proof}
+
+          rest ->
+            construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
         end
 
       {:ext, shared_prefix, next_node} ->
         case ListHelper.get_postfix(nibbles, shared_prefix) do
-          nil  -> {nil, proof}
+          nil ->
+            {nil, proof}
+
           rest ->
             insert_proof_db(next_node, trie.db, proof)
             construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
@@ -117,7 +123,7 @@ defmodule MerklePatriciaTree.Proof do
     node_val == value and path == shared_prefix
   end
 
-  defp int_verify_proof(_path, _node,  _value, _proof), do: false
+  defp int_verify_proof(_path, _node, _value, _proof), do: false
 
   defp decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
     case read_from_db(proof, hash) do
@@ -136,5 +142,4 @@ defmodule MerklePatriciaTree.Proof do
   end
 
   defp read_from_db(db, hash), do: DB.get(db, hash)
-
 end
