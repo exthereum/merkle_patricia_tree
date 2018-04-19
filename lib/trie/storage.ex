@@ -38,23 +38,26 @@ defmodule MerklePatriciaTree.Trie.Storage do
              165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
              214, 26, 122, 164>>
   """
-  @spec put_node(ExRLP.t, Trie.t) :: binary()
+  @spec put_node(ExRLP.t(), Trie.t()) :: binary()
   def put_node(rlp, trie) do
     case ExRLP.encode(rlp) do
-      encoded when byte_size(encoded) >= @max_rlp_len -> store(encoded, trie.db) # store large nodes
-      encoded -> encoded
+      # store large nodes
+      encoded when byte_size(encoded) >= @max_rlp_len ->
+        store(encoded, trie.db)
+
+      encoded ->
+        encoded
     end
   end
 
   @doc """
   TODO: Doc and test
   """
-  @spec store(ExRLP.t, MerklePatriciaTree.DB.db) :: binary()
+  @spec store(ExRLP.t(), MerklePatriciaTree.DB.db()) :: binary()
   def store(rlp_encoded_node, db) do
     hash = Utils.hash(rlp_encoded_node)
-    DB.put!(db, hash, rlp_encoded_node) # store in db
-
-    hash # return hash
+    DB.put!(db, hash, rlp_encoded_node)
+    hash
   end
 
   @doc """
@@ -84,17 +87,22 @@ defmodule MerklePatriciaTree.Trie.Storage do
     iex> MerklePatriciaTree.Trie.Storage.get_node(%{trie| root_hash: <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201, 165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84, 214, 26, 122, 164>>})
     ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
   """
-  @spec get_node(Trie.t) :: ExRLP.t | :not_found
+  @spec get_node(Trie.t()) :: ExRLP.t() | :not_found
   def get_node(trie) do
     case trie.root_hash do
-      <<>> -> <<>>
-      x when not is_binary(x) -> x # node was stored directly
+      <<>> ->
+        <<>>
+
+      # node was stored directly
+      x when not is_binary(x) ->
+        x
+
       h ->
-        case DB.get(trie.db, h) do # stored in db
+        # stored in db
+        case DB.get(trie.db, h) do
           {:ok, v} -> ExRLP.decode(v)
           :not_found -> :not_found
         end
     end
   end
-
 end

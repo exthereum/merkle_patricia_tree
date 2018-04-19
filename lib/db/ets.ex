@@ -13,7 +13,7 @@ defmodule MerklePatriciaTree.DB.ETS do
   @doc """
   Performs initialization for this db.
   """
-  @spec init(DB.db_name) :: DB.db
+  @spec init(DB.db_name()) :: DB.db()
   def init(db_name) do
     :ets.new(db_name, [:set, :public, :named_table])
 
@@ -23,10 +23,10 @@ defmodule MerklePatriciaTree.DB.ETS do
   @doc """
   Retrieves a key from the database.
   """
-  @spec get(DB.db_ref, Trie.key) :: {:ok, DB.value} | :not_found
+  @spec get(DB.db_ref(), Trie.key()) :: {:ok, DB.value()} | :not_found
   def get(db_ref, key) do
     case :ets.lookup(db_ref, key) do
-      [{^key,v}|_rest] -> {:ok, v}
+      [{^key, v} | _rest] -> {:ok, v}
       _ -> :not_found
     end
   end
@@ -34,13 +34,12 @@ defmodule MerklePatriciaTree.DB.ETS do
   @doc """
   Stores a key in the database.
   """
-  @spec put!(DB.db_ref, Trie.key, DB.value) :: :ok
+  @spec put!(DB.db_ref(), Trie.key(), DB.value()) :: :ok
   def put!(db_ref, key, value) do
     case :ets.insert(db_ref, {key, value}) do
       true -> :ok
     end
   end
-
 
   @doc """
   Returns a random :ets database suitable for testing
@@ -58,5 +57,4 @@ defmodule MerklePatriciaTree.DB.ETS do
   def random_ets_db(name \\ nil) do
     init(name || Utils.random_atom(20))
   end
-
 end

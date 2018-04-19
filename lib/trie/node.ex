@@ -13,10 +13,10 @@ defmodule MerklePatriciaTree.Trie.Node do
   alias MerklePatriciaTree.Utils
 
   @type trie_node ::
-    :empty |
-    {:leaf, [integer()], binary()} |
-    {:ext, [integer()], binary()} |
-    {:branch, [binary()]}
+          :empty
+          | {:leaf, [integer()], binary()}
+          | {:ext, [integer()], binary()}
+          | {:branch, [binary()]}
 
   @doc """
   Given a node, this function will encode the node
@@ -42,26 +42,27 @@ defmodule MerklePatriciaTree.Trie.Node do
   iex> MerklePatriciaTree.Trie.Node.encode_node({:ext, [1, 2, 3], <<>>}, trie)
   [<<17, 35>>, ""]
   """
-  @spec encode_node(trie_node, Trie.t) :: nil | binary()
+  @spec encode_node(trie_node, Trie.t()) :: nil | binary()
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type(trie)
     |> Storage.put_node(trie)
   end
 
-  @spec decode_node(list(), Trie.t) :: trie_node
+  @spec decode_node(list(), Trie.t()) :: trie_node
   def decode_node(branches, trie) when length(branches) == 17 do
-    {:branch, Enum.reduce(branches, [],
-      fn("", acc) ->
-        acc ++ [""]
+    {:branch,
+     Enum.reduce(branches, [], fn
+       "", acc ->
+         acc ++ [""]
 
-        (elem, acc) when is_binary(elem) and byte_size(elem) == 32 ->
-          {:ok, node} = DB.get(trie.db, elem)
-          acc ++ [ExRLP.decode(node)]
+       elem, acc when is_binary(elem) and byte_size(elem) == 32 ->
+         {:ok, node} = DB.get(trie.db, elem)
+         acc ++ [ExRLP.decode(node)]
 
-        (elem, acc) when is_binary(elem) ->
-          acc ++ [ExRLP.decode(elem)]
-      end)}
+       elem, acc when is_binary(elem) ->
+         acc ++ [ExRLP.decode(elem)]
+     end)}
   end
 
   def decode_node([hp_k, v], _trie) do
@@ -79,22 +80,24 @@ defmodule MerklePatriciaTree.Trie.Node do
   end
 
   defp encode_node_type({:branch, branches}, trie) when length(branches) == 17 do
-    Enum.reduce(branches, [],
-      fn("", acc) -> acc ++ [""]
+    Enum.reduce(branches, [], fn
+      "", acc ->
+        acc ++ [""]
 
-        (elem, acc) when is_list(elem) ->
-          encoded_elem = ExRLP.encode(elem)
+      elem, acc when is_list(elem) ->
+        encoded_elem = ExRLP.encode(elem)
 
-          if byte_size(encoded_elem) < 32 do
-            acc ++ [encoded_elem]
-          else
-            hash = Utils.hash(encoded_elem)
-            DB.put!(trie.db, hash, encoded_elem)
-            acc ++ [hash]
-          end
+        if byte_size(encoded_elem) < 32 do
+          acc ++ [encoded_elem]
+        else
+          hash = Utils.hash(encoded_elem)
+          DB.put!(trie.db, hash, encoded_elem)
+          acc ++ [hash]
+        end
 
-        (elem, acc) -> acc ++ [elem]
-      end)
+      elem, acc ->
+        acc ++ [elem]
+    end)
   end
 
   defp encode_node_type({:ext, shared_prefix, next_node}, trie) when is_list(next_node) do
@@ -136,14 +139,20 @@ defmodule MerklePatriciaTree.Trie.Node do
   iex> |> MerklePatriciaTree.Trie.Node.decode_trie()
   {:ext, [1, 2, 3], <<>>}
   """
-  @spec decode_trie(Trie.t) :: trie_node
+  @spec decode_trie(Trie.t()) :: trie_node
   def decode_trie(trie) do
     case Storage.get_node(trie) do
-      nil -> :empty
-      <<>> -> :empty
-      :not_found -> :empty
+      nil ->
+        :empty
+
+      <<>> ->
+        :empty
+
+      :not_found ->
+        :empty
+
       node ->
         decode_node(node, trie)
-      end
+    end
   end
 end

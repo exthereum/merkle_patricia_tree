@@ -1,5 +1,4 @@
 defmodule MerklePatriciaTree.Proof do
-
   require Integer
 
   alias MerklePatriciaTree.Trie
@@ -21,7 +20,7 @@ defmodule MerklePatriciaTree.Proof do
     construct_proof({ExRLP.decode(node), trie}, Helper.get_nibbles(key), proof_db)
   end
 
-  defp construct_proof({node, trie}, nibbles=[nibble| rest], proof) do
+  defp construct_proof({node, trie}, nibbles = [nibble | rest], proof) do
     case decode_node(node, trie) do
       :empty ->
         {nil, proof}
@@ -49,13 +48,19 @@ defmodule MerklePatriciaTree.Proof do
       {:ext, shared_prefix, next_node} when is_list(next_node) ->
         # extension, continue walking tree if we match
         case ListHelper.get_postfix(nibbles, shared_prefix) do
-          nil -> {nil, proof} # did not match extension node
-          rest -> construct_proof({next_node, trie}, rest, proof)
+          nil ->
+            # did not match extension node
+            {nil, proof}
+
+          rest ->
+            construct_proof({next_node, trie}, rest, proof)
         end
 
       {:ext, shared_prefix, next_node} ->
         case ListHelper.get_postfix(nibbles, shared_prefix) do
-          nil  -> {nil, proof}
+          nil ->
+            {nil, proof}
+
           rest ->
             node = insert_proof_db(next_node, trie.db, proof)
             construct_proof({node, trie}, rest, proof)
@@ -83,6 +88,7 @@ defmodule MerklePatriciaTree.Proof do
   def verify_proof(key, value, hash, proof) do
     ## TODO : handle when there is no value into the db
     {:ok, node} = read_from_db(proof.db, hash)
+
     case decode_node(ExRLP.decode(node), proof) do
       :error -> false
       node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
@@ -114,7 +120,7 @@ defmodule MerklePatriciaTree.Proof do
     node_val == value and path == shared_prefix
   end
 
-  defp int_verify_proof(_path, _node,  _value, _proof), do: false
+  defp int_verify_proof(_path, _node, _value, _proof), do: false
 
   defp decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
     case read_from_db(proof.db, hash) do
@@ -145,5 +151,4 @@ defmodule MerklePatriciaTree.Proof do
   end
 
   defp read_from_db(db, hash), do: DB.get(db, hash)
-
 end
