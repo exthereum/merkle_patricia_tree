@@ -3,6 +3,8 @@ defmodule MerklePatriciaTree.Utils do
   Helper functions related to common operations
   """
 
+  alias MerklePatriciaTree.Utils
+
   @hash_bytes 32
 
   @doc """
@@ -13,13 +15,13 @@ defmodule MerklePatriciaTree.Utils do
 
   ## Examples
 
-      iex> MerklePatriciaTree.Test.random_string(20) |> is_binary
+      iex> MerklePatriciaTree.Utils.random_string(20) |> is_binary
       true
 
-      iex> String.length(MerklePatriciaTree.Test.random_string(20))
+      iex> String.length(MerklePatriciaTree.Utils.random_string(20))
       20
 
-      iex> MerklePatriciaTree.Test.random_string(20) == MerklePatriciaTree.Test.random_string(20)
+      iex> MerklePatriciaTree.Utils.random_string(20) == MerklePatriciaTree.Utils.random_string(20)
       false
   """
   def random_string(length) do
@@ -36,13 +38,13 @@ defmodule MerklePatriciaTree.Utils do
 
   ## Examples
 
-      iex> MerklePatriciaTree.Test.random_atom(20) |> is_atom
+      iex> MerklePatriciaTree.Utils.random_atom(20) |> is_atom
       true
 
-      iex> MerklePatriciaTree.Test.random_atom(20) |> Atom.to_string |> String.length
+      iex> MerklePatriciaTree.Utils.random_atom(20) |> Atom.to_string |> String.length
       20
 
-      iex> MerklePatriciaTree.Test.random_atom(20) == MerklePatriciaTree.Test.random_atom(20)
+      iex> MerklePatriciaTree.Utils.random_atom(20) == MerklePatriciaTree.Utils.random_atom(20)
       false
   """
   def random_atom(length) do

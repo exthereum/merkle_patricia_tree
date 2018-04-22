@@ -26,11 +26,11 @@ defmodule MerklePatriciaTree.DB do
 
   ## Examples
 
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
+      iex> db = MerklePatriciaTree.DB.ETS.random_ets_db()
       iex> MerklePatriciaTree.DB.get(db, "name")
       :not_found
 
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
+      iex> db = MerklePatriciaTree.DB.ETS.random_ets_db()
       iex> MerklePatriciaTree.DB.put!(db, "name", "bob")
       iex> MerklePatriciaTree.DB.get(db, "name")
       {:ok, "bob"}
@@ -45,11 +45,11 @@ defmodule MerklePatriciaTree.DB do
 
   ## Examples
 
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
+      iex> db = MerklePatriciaTree.DB.ETS.random_ets_db()
       iex> MerklePatriciaTree.DB.get!(db, "name")
       ** (MerklePatriciaTree.DB.KeyNotFoundError) cannot find key `name`
 
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
+      iex> db = MerklePatriciaTree.DB.ETS.random_ets_db()
       iex> MerklePatriciaTree.DB.put!(db, "name", "bob")
       iex> MerklePatriciaTree.DB.get!(db, "name")
       "bob"
@@ -69,7 +69,7 @@ defmodule MerklePatriciaTree.DB do
 
       ## Examples
 
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
+      iex> db = MerklePatriciaTree.DB.ETS.random_ets_db()
       iex> MerklePatriciaTree.DB.put!(db, "name", "bob")
       iex> MerklePatriciaTree.DB.get(db, "name")
       {:ok, "bob"}

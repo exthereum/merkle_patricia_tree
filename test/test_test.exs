@@ -1,4 +1,4 @@
 defmodule MerklePatriciaTree.TestTest do
   use ExUnit.Case
-  doctest MerklePatriciaTree.Test
+  doctest MerklePatriciaTree.Utils
 end

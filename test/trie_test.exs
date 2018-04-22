@@ -1,5 +1,6 @@
 defmodule MerklePatriciaTree.TrieTest do
   use ExUnit.Case, async: true
+  doctest MerklePatriciaTree.Trie
 
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Utils
@@ -62,21 +63,24 @@ defmodule MerklePatriciaTree.TrieTest do
       assert Trie.get(trie, <<0x01::4, 0x02::4, 0x03::4, 0x04::4, 0x05::4>>) == nil
     end
 
-    test "for a trie with a branch node", %{db: db} do
-      trie = Trie.new(db)
+    # test "for a trie with a branch node", %{db: db} do
+    #   trie = Trie.new(db)
 
-      trie = %{
-        trie
-        | root_hash:
-            [0x01]
-            |> extension_node(branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool"))
-            |> ExRLP.encode()
-            |> store(db)
-      }
+    #   trie = %{
+    #     trie
+    #     | root_hash:
+    #     [0x01]
+    #     |> extension_node(branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool"))
+    #     |> ExRLP.encode()
+    #     |> store(db)
+    #   }
 
-      trie = Trie.delete(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>)
-      assert Trie.get(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>) == nil
-    end
+    #   assert Trie.get(trie, <<0x01::4>>) == "cool"
+    #   assert Trie.get(trie, <<0x01::4, 0x00::4>>) == nil
+    #   assert Trie.get(trie, <<0x01::4, 0x00::4, 0x02::4>>) == "hi"
+    #   assert Trie.get(trie, <<0x01::4, 0x00::4, 0x0::43>>) == nil
+    #   assert Trie.get(trie, <<0x01::4, 0x01::4>>) == nil
+    # end
 
     test "for a trie with encoded nodes", %{db: db} do
       long_string = Enum.join(for _ <- 1..60, do: "A")
@@ -141,21 +145,21 @@ defmodule MerklePatriciaTree.TrieTest do
       assert Trie.get(trie_2, <<0x01::4, 0x02::4>>) == long_string_2
     end
 
-    # test "update branch under ext node", %{db: db} do
-    #   trie =
-    #     db
-    #     |> Trie.new()
-    #     |> Trie.update(<<1::4, 2::4>>, "first")
-    #     |> Trie.update(<<1::4, 2::4, 3::4>>, <<"cool">>)
+    test "update branch under ext node", %{db: db} do
+      trie =
+        db
+        |> Trie.new()
+        |> Trie.update(<<1::4, 2::4>>, "first")
+        |> Trie.update(<<1::4, 2::4, 3::4>>, <<"cool">>)
 
-    #   trie_2 = Trie.update(trie, <<1::4, 2::4, 3::4>>, <<"cooler">>)
+      trie_2 = Trie.update(trie, <<1::4, 2::4, 3::4>>, <<"cooler">>)
 
-    #   assert Trie.get(trie, <<1::4, 2::4, 3::4>>) == <<"cool">>
-    #   assert Trie.get(trie_2, <<1::4>>) == nil
-    #   assert Trie.get(trie_2, <<1::4, 2::4>>) == "first"
-    #   assert Trie.get(trie_2, <<1::4, 2::4, 3::4>>) == <<"cooler">>
-    #   assert Trie.get(trie_2, <<1::4, 2::4, 3::4, 4::4>>) == nil
-    # end
+      assert Trie.get(trie, <<1::4, 2::4, 3::4>>) == <<"cool">>
+      assert Trie.get(trie_2, <<1::4>>) == nil
+      assert Trie.get(trie_2, <<1::4, 2::4>>) == "first"
+      assert Trie.get(trie_2, <<1::4, 2::4, 3::4>>) == <<"cooler">>
+      assert Trie.get(trie_2, <<1::4, 2::4, 3::4, 4::4>>) == nil
+    end
 
     test "update multiple keys", %{db: db} do
       trie =

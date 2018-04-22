@@ -28,7 +28,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   ## Examples
 
-      iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
+      iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
       iex> MerklePatriciaTree.Trie.Storage.put_node(<<>>, trie)
       <<>>
       iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie)
@@ -66,20 +66,20 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   ## Examples
 
-    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<>>)
+    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
     <<>>
 
-    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<130, 72, 105>>)
+    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<130, 72, 105>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
     "Hi"
 
-    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>)
+    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
     :not_found
 
 
-    iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<130, 72, 105>>)
+    iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<130, 72, 105>>)
     iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
     <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
       165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,

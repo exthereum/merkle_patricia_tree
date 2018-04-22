@@ -46,11 +46,11 @@ defmodule MerklePatriciaTree.DB.ETS do
 
   ## Examples
 
-      iex> {MerklePatriciaTree.DB.ETS, db_ref} = MerklePatriciaTree.Test.random_ets_db()
+      iex> {MerklePatriciaTree.DB.ETS, db_ref} = random_ets_db()
       iex> :ets.info(db_ref)[:type]
       :set
 
-      iex> {MerklePatriciaTree.DB.ETS, db_ref} = MerklePatriciaTree.Test.random_ets_db(:test1)
+      iex> {MerklePatriciaTree.DB.ETS, db_ref} = random_ets_db(:test1)
       iex> :ets.info(db_ref)[:name]
       :test1
   """
