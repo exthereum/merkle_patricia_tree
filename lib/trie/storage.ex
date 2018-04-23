@@ -30,13 +30,12 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
       iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
       iex> MerklePatriciaTree.Trie.Storage.put_node(<<>>, trie)
-      <<>>
-      iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie)
+      <<128>>
+      iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie) |> ExRLP.decode()
       "Hi"
       iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
-      <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
-             165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
-             214, 26, 122, 164>>
+      <<58, 104, 97, 241, 160, 195, 142, 243, 97, 153, 240, 89, 91, 165, 173, 193, 32,
+      181, 139, 138, 221, 238, 154, 172, 74, 44, 181, 67, 136, 21, 10, 205>>
   """
   @spec put_node(ExRLP.t(), Trie.t()) :: binary()
   def put_node(rlp, trie) do
@@ -81,10 +80,8 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
     iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<130, 72, 105>>)
     iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
-    <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
-      165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
-      214, 26, 122, 164>>
-    iex> MerklePatriciaTree.Trie.Storage.get_node(%{trie| root_hash: <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201, 165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84, 214, 26, 122, 164>>})
+    <<58, 104, 97, 241, 160, 195, 142, 243, 97, 153, 240, 89, 91, 165, 173, 193, 32, 181, 139, 138, 221, 238, 154, 172, 74, 44, 181, 67, 136, 21, 10, 205>>
+    iex> MerklePatriciaTree.Trie.Storage.get_node(%{trie| root_hash: <<58, 104, 97, 241, 160, 195, 142, 243, 97, 153, 240, 89, 91, 165, 173, 193, 32, 181, 139, 138, 221, 238, 154, 172, 74, 44, 181, 67, 136, 21, 10, 205>>})
     ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
   """
   @spec get_node(Trie.t()) :: ExRLP.t() | :not_found

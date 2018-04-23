@@ -28,19 +28,21 @@ defmodule MerklePatriciaTree.Trie.Node do
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node(:empty, trie)
-  <<>>
+  <<128>>
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
-  iex> MerklePatriciaTree.Trie.Node.encode_node({:leaf, [5,6,7], "ok"}, trie)
+  iex> encoded_node = MerklePatriciaTree.Trie.Node.encode_node({:leaf, [5,6,7], "ok"}, trie)
+  iex> ExRLP.decode(encoded_node)
   ["5g", "ok"]
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
-  iex> MerklePatriciaTree.Trie.Node.encode_node({:branch, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>]}, trie)
+  iex> encoded_node = MerklePatriciaTree.Trie.Node.encode_node({:branch, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>]}, trie)
+  iex> ExRLP.decode(encoded_node)
   ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
 
   iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
   iex> MerklePatriciaTree.Trie.Node.encode_node({:ext, [1, 2, 3], <<>>}, trie)
-  [<<17, 35>>, ""]
+  <<31, 82, 144, 227, 4, 20, 0, 200, 58, 146, 224, 225, 151, 109, 242, 82, 125,152, 60, 185, 143, 246, 78, 21, 182, 104, 139, 99, 191, 188, 107, 140>>
   """
   @spec encode_node(trie_node, Trie.t()) :: nil | binary()
   def encode_node(trie_node, trie) do

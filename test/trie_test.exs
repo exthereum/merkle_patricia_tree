@@ -69,10 +69,13 @@ defmodule MerklePatriciaTree.TrieTest do
       trie = %{
         trie
         | root_hash:
-        [0x01]
-        |> extension_node(branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool") |> MerklePatriciaTree.Trie.Node.encode_node(trie))
-        |> ExRLP.encode()
-        |> store(db)
+            [0x01]
+            |> extension_node(
+              branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool")
+              |> MerklePatriciaTree.Trie.Node.encode_node(trie)
+            )
+            |> ExRLP.encode()
+            |> store(db)
       }
 
       assert Trie.get(trie, <<0x01::4>>) == "cool"
@@ -322,7 +325,7 @@ defmodule MerklePatriciaTree.TrieTest do
     %{db: {_, db_ref1}} = init_trie1 = Trie.new(ETS.random_ets_db())
     %{db: {_, db_ref2}} = init_trie2 = Trie.new(ETS.random_ets_db())
 
-    full_trie_list = Enum.uniq_by(get_random_tree_list(10), fn {x, _} -> x end)
+    full_trie_list = Enum.uniq_by(get_random_tree_list(1000), fn {x, _} -> x end)
 
     full_trie =
       Enum.reduce(full_trie_list, init_trie1, fn {key, val}, acc_trie ->
@@ -331,7 +334,7 @@ defmodule MerklePatriciaTree.TrieTest do
 
     ## Reducing the full list trie randomly and
     ## getting the removed keys as well.
-    {keys, sub_trie_list} = reduce_trie(5, full_trie_list)
+    {keys, sub_trie_list} = reduce_trie(500, full_trie_list)
 
     constructed_trie =
       Enum.reduce(sub_trie_list, init_trie2, fn {key, val}, acc_trie ->
