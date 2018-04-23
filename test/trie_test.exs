@@ -63,24 +63,24 @@ defmodule MerklePatriciaTree.TrieTest do
       assert Trie.get(trie, <<0x01::4, 0x02::4, 0x03::4, 0x04::4, 0x05::4>>) == nil
     end
 
-    # test "for a trie with a branch node", %{db: db} do
-    #   trie = Trie.new(db)
+    test "for a trie with a branch node", %{db: db} do
+      trie = Trie.new(db)
 
-    #   trie = %{
-    #     trie
-    #     | root_hash:
-    #     [0x01]
-    #     |> extension_node(branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool"))
-    #     |> ExRLP.encode()
-    #     |> store(db)
-    #   }
+      trie = %{
+        trie
+        | root_hash:
+        [0x01]
+        |> extension_node(branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool") |> MerklePatriciaTree.Trie.Node.encode_node(trie))
+        |> ExRLP.encode()
+        |> store(db)
+      }
 
-    #   assert Trie.get(trie, <<0x01::4>>) == "cool"
-    #   assert Trie.get(trie, <<0x01::4, 0x00::4>>) == nil
-    #   assert Trie.get(trie, <<0x01::4, 0x00::4, 0x02::4>>) == "hi"
-    #   assert Trie.get(trie, <<0x01::4, 0x00::4, 0x0::43>>) == nil
-    #   assert Trie.get(trie, <<0x01::4, 0x01::4>>) == nil
-    # end
+      assert Trie.get(trie, <<0x01::4>>) == "cool"
+      assert Trie.get(trie, <<0x01::4, 0x00::4>>) == nil
+      assert Trie.get(trie, <<0x01::4, 0x00::4, 0x02::4>>) == "hi"
+      assert Trie.get(trie, <<0x01::4, 0x00::4, 0x0::43>>) == nil
+      assert Trie.get(trie, <<0x01::4, 0x01::4>>) == nil
+    end
 
     test "for a trie with encoded nodes", %{db: db} do
       long_string = Enum.join(for _ <- 1..60, do: "A")
@@ -322,7 +322,7 @@ defmodule MerklePatriciaTree.TrieTest do
     %{db: {_, db_ref1}} = init_trie1 = Trie.new(ETS.random_ets_db())
     %{db: {_, db_ref2}} = init_trie2 = Trie.new(ETS.random_ets_db())
 
-    full_trie_list = Enum.uniq_by(get_random_tree_list(10_000), fn {x, _} -> x end)
+    full_trie_list = Enum.uniq_by(get_random_tree_list(10), fn {x, _} -> x end)
 
     full_trie =
       Enum.reduce(full_trie_list, init_trie1, fn {key, val}, acc_trie ->
@@ -331,7 +331,7 @@ defmodule MerklePatriciaTree.TrieTest do
 
     ## Reducing the full list trie randomly and
     ## getting the removed keys as well.
-    {keys, sub_trie_list} = reduce_trie(5_000, full_trie_list)
+    {keys, sub_trie_list} = reduce_trie(5, full_trie_list)
 
     constructed_trie =
       Enum.reduce(sub_trie_list, init_trie2, fn {key, val}, acc_trie ->
@@ -367,7 +367,7 @@ defmodule MerklePatriciaTree.TrieTest do
   end
 
   def branch_node(branches, value) when length(branches) == 16 do
-    branches ++ [value]
+    {:branch, branches ++ [value]}
   end
 
   def blanks(n) do
