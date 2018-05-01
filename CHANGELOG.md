@@ -1,3 +1,5 @@
+# 0.2.7
+* Update ex_rlp to 0.3.0
 # 0.2.6
 * Don't raise on key not found
 # 0.2.5
