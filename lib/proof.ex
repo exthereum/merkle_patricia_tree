@@ -64,6 +64,9 @@ defmodule MerklePatriciaTree.Proof do
             node = insert_proof_db(next_node, trie.db, proof)
             construct_proof({node, trie}, rest, proof)
         end
+
+      _ ->
+        {nil, proof}
     end
   end
 
@@ -146,7 +149,7 @@ defmodule MerklePatriciaTree.Proof do
           build_ext(prefix, v, trie, proof)
         end
 
-        nil -> :empty
+      nil -> :empty
     end
   end
 
