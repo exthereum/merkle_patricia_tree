@@ -145,10 +145,11 @@ defmodule MerklePatriciaTree.Proof do
         else
           build_ext(prefix, v, trie, proof)
         end
+
+        nil -> :empty
     end
   end
 
-  ## test
   defp build_ext(prefix, hash, nil, proof) when byte_size(hash) == 32 do
     {:ok, rlp_node} = read_from_db(proof.db, hash)
     {:ext, prefix, ExRLP.decode(rlp_node)}
