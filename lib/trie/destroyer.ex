@@ -76,7 +76,11 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
     updated_branches =
       List.update_at(branches, prefix_hd, fn branch ->
         branch_node = branch |> Trie.into(trie) |> Node.decode_trie()
-        trie_remove_key(branch_node, prefix_tl, trie) |> Node.encode_node(trie)
+
+        case trie_remove_key(branch_node, prefix_tl, trie) do
+          :empty -> ""
+          node -> Node.encode_node(node, trie)
+        end
       end)
 
     non_blank_branches =
@@ -119,7 +123,7 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
   defp trie_remove_key(:empty, _prefix, _trie), do: :empty
 
   # Reduce branch node
-  defp try_to_reduce_branch(branch, _trie) do
+  defp try_to_reduce_branch(branch, trie) do
     case get_singleton_branch(branch) do
       ## More than one element in the branch
       ## so we cannot delete it.
@@ -136,7 +140,7 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         {:leaf, [], value}
 
       {next, next_node} ->
-        case Node.decode_node(next_node) do
+        case Node.decode_node(trie, next_node) do
           {:leaf, path, val} ->
             {:leaf, [next] ++ path, val}
 

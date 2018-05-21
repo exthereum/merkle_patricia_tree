@@ -12,7 +12,7 @@ defmodule MerklePatriciaTreeTest do
     for {test_type, test_group} <- @passing_tests do
       for {test_name, test} <- read_test_file(test_type),
           test_group == :all or Enum.member?(test_group, String.to_atom(test_name)) do
-        db = MerklePatriciaTree.Test.random_ets_db()
+        db = MerklePatriciaTree.DB.ETS.random_ets_db()
         test_in = test["in"]
 
         input =
@@ -29,8 +29,6 @@ defmodule MerklePatriciaTreeTest do
           Enum.reduce(input, Trie.new(db), fn [k, v], trie ->
             Trie.update(trie, k |> maybe_hex, v |> maybe_hex)
           end)
-
-        # MerklePatriciaTree.Trie.Inspector.inspect_trie(trie)
 
         assert trie.root_hash == test["root"] |> hex_to_binary
       end

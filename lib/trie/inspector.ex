@@ -13,7 +13,7 @@ defmodule MerklePatriciaTree.Trie.Inspector do
 
   ## Examples
 
-      iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
+      iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
       ...>   |> MerklePatriciaTree.Trie.update("type", "fighter")
       ...>   |> MerklePatriciaTree.Trie.update("name", "bob")
       ...>   |> MerklePatriciaTree.Trie.update("nationality", "usa")
@@ -73,7 +73,7 @@ defmodule MerklePatriciaTree.Trie.Inspector do
 
   ## Examples
 
-      iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
+      iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
       ...>   |> MerklePatriciaTree.Trie.update("type", "fighter")
       ...>   |> MerklePatriciaTree.Trie.update("name", "bob")
       ...>   |> MerklePatriciaTree.Trie.update("nationality", "usa")

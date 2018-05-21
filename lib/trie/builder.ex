@@ -53,6 +53,13 @@ defmodule MerklePatriciaTree.Trie.Builder do
     build_branch([{old_prefix, old_value}, {new_prefix, new_value}], trie)
   end
 
+  # Merge right onto an extension node, we'll need to push this down to our value
+  defp trie_put_key({:ext, shared_prefix, node_hash}, new_prefix, new_value, trie)
+       when shared_prefix == new_prefix do
+    next_node = Node.decode_trie(node_hash |> Trie.into(trie)) |> put_key([], new_value, trie)
+    {:ext, shared_prefix, next_node}
+  end
+
   # Merge leafs that share some prefix, this will cause us to construct an extension followed by a branch
   defp trie_put_key(
          {:ext, [old_prefix_hd | _old_prefix_tl] = old_prefix, old_value},
@@ -69,7 +76,7 @@ defmodule MerklePatriciaTree.Trie.Builder do
       # Since ext nodes must be followed by branches, let's just merge
       # the new value into the branch
       old_trie = old_value |> Trie.into(trie) |> Node.decode_trie()
-      new_encoded_trie = old_trie |> put_key(new_tl, new_value, trie) |> Node.encode_node(trie)
+      new_encoded_trie = put_key(old_trie, new_tl, new_value, trie) |> Node.encode_node(trie)
 
       {:ext, matching_prefix, new_encoded_trie}
     else
@@ -87,8 +94,8 @@ defmodule MerklePatriciaTree.Trie.Builder do
             {h, {:encoded, ext_encoded}}
         end
 
-      branch = [first, {new_tl, new_value}] |> build_branch(trie) |> Node.encode_node(trie)
-      {:ext, matching_prefix, branch}
+      branches = build_branch([first, {new_tl, new_value}], trie) |> Node.encode_node(trie)
+      {:ext, matching_prefix, branches}
     end
   end
 
@@ -97,7 +104,6 @@ defmodule MerklePatriciaTree.Trie.Builder do
     # TODO: Standardize with above
     first =
       case old_prefix do
-        # [] -> {16, {:encoded, old_value}} # TODO: Is this right?
         [h | []] ->
           {h, {:encoded, old_value}}
 
@@ -119,9 +125,7 @@ defmodule MerklePatriciaTree.Trie.Builder do
     {:branch,
      List.update_at(branches, prefix_hd, fn branch ->
        branch_node = branch |> Trie.into(trie) |> Node.decode_trie()
-
-       # Maybe this one?
-       branch_node |> put_key(prefix_tl, value, trie) |> Node.encode_node(trie)
+       put_key(branch_node, prefix_tl, value, trie) |> Node.encode_node(trie)
      end)}
   end
 

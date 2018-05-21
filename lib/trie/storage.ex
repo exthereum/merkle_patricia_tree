@@ -7,6 +7,7 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.Trie
+  alias MerklePatriciaTree.Utils
 
   @max_rlp_len 32
 
@@ -27,15 +28,14 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   ## Examples
 
-      iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db())
+      iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db())
       iex> MerklePatriciaTree.Trie.Storage.put_node(<<>>, trie)
-      <<>>
-      iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie)
+      <<128>>
+      iex> MerklePatriciaTree.Trie.Storage.put_node("Hi", trie) |> ExRLP.decode()
       "Hi"
       iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
-      <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
-             165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
-             214, 26, 122, 164>>
+      <<58, 104, 97, 241, 160, 195, 142, 243, 97, 153, 240, 89, 91, 165, 173, 193, 32,
+      181, 139, 138, 221, 238, 154, 172, 74, 44, 181, 67, 136, 21, 10, 205>>
   """
   @spec put_node(ExRLP.t(), Trie.t()) :: binary()
   def put_node(rlp, trie) do
@@ -44,9 +44,8 @@ defmodule MerklePatriciaTree.Trie.Storage do
       encoded when byte_size(encoded) >= @max_rlp_len ->
         store(encoded, trie.db)
 
-      # otherwise, return node itself
-      _ ->
-        rlp
+      encoded ->
+        encoded
     end
   end
 
@@ -55,14 +54,9 @@ defmodule MerklePatriciaTree.Trie.Storage do
   """
   @spec store(ExRLP.t(), MerklePatriciaTree.DB.db()) :: binary()
   def store(rlp_encoded_node, db) do
-    # sha3
-    node_hash = :keccakf1600.sha3_256(rlp_encoded_node)
-
-    # store in db
-    DB.put!(db, node_hash, rlp_encoded_node)
-
-    # return hash
-    node_hash
+    hash = Utils.hash(rlp_encoded_node)
+    DB.put!(db, hash, rlp_encoded_node)
+    hash
   end
 
   @doc """
@@ -71,25 +65,23 @@ defmodule MerklePatriciaTree.Trie.Storage do
 
   ## Examples
 
-    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<>>)
+    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
     <<>>
 
-    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<130, 72, 105>>)
+    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<130, 72, 105>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
     "Hi"
 
-    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>)
+    iex> MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>)
     ...> |> MerklePatriciaTree.Trie.Storage.get_node()
     :not_found
 
 
-    iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.Test.random_ets_db(), <<130, 72, 105>>)
+    iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.ETS.random_ets_db(), <<130, 72, 105>>)
     iex> MerklePatriciaTree.Trie.Storage.put_node(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], trie)
-    <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201,
-      165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84,
-      214, 26, 122, 164>>
-    iex> MerklePatriciaTree.Trie.Storage.get_node(%{trie| root_hash: <<141, 163, 93, 242, 120, 27, 128, 97, 138, 56, 116, 101, 165, 201, 165, 139, 86, 73, 85, 153, 45, 38, 207, 186, 196, 202, 111, 84, 214, 26, 122, 164>>})
+    <<58, 104, 97, 241, 160, 195, 142, 243, 97, 153, 240, 89, 91, 165, 173, 193, 32, 181, 139, 138, 221, 238, 154, 172, 74, 44, 181, 67, 136, 21, 10, 205>>
+    iex> MerklePatriciaTree.Trie.Storage.get_node(%{trie| root_hash: <<58, 104, 97, 241, 160, 195, 142, 243, 97, 153, 240, 89, 91, 165, 173, 193, 32, 181, 139, 138, 221, 238, 154, 172, 74, 44, 181, 67, 136, 21, 10, 205>>})
     ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
   """
   @spec get_node(Trie.t()) :: ExRLP.t() | :not_found

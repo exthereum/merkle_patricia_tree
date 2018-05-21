@@ -14,15 +14,13 @@ defmodule MerklePatriciaTree.Proof do
   @spec construct_proof(Trie.t(), Trie.key(), Trie.t()) :: :ok
   def construct_proof({trie, key, proof_db}) do
     ## Inserting the value of the root hash into the proof db
-    insert_proof_db(trie.root_hash, trie.db, proof_db)
-
+    node = insert_proof_db(trie.root_hash, trie.db, proof_db)
     ## Constructing the proof trie going through the rest of the nodes
-    next_node = Trie.get_next_node(trie.root_hash, trie)
-    construct_proof(next_node, Helper.get_nibbles(key), proof_db)
+    construct_proof({ExRLP.decode(node), trie}, Helper.get_nibbles(key), proof_db)
   end
 
-  defp construct_proof(trie, nibbles = [nibble | rest], proof) do
-    case Node.decode_trie(trie) do
+  defp construct_proof({node, trie}, nibbles = [nibble | rest], proof) do
+    case decode_node(node, trie, proof) do
       :empty ->
         {nil, proof}
 
@@ -33,16 +31,11 @@ defmodule MerklePatriciaTree.Proof do
             {nil, proof}
 
           node_hash when is_binary(node_hash) and byte_size(node_hash) == 32 ->
-            insert_proof_db(node_hash, trie.db, proof)
-
-            construct_proof(
-              Trie.get_next_node(node_hash, trie),
-              rest,
-              proof
-            )
+            node = insert_proof_db(node_hash, trie.db, proof)
+            construct_proof({node, trie}, rest, proof)
 
           node_hash ->
-            construct_proof(Trie.get_next_node(node_hash, trie), rest, proof)
+            construct_proof({node_hash, trie}, rest, proof)
         end
 
       {:leaf, prefix, value} ->
@@ -54,12 +47,12 @@ defmodule MerklePatriciaTree.Proof do
       {:ext, shared_prefix, next_node} when is_list(next_node) ->
         # extension, continue walking tree if we match
         case ListHelper.get_postfix(nibbles, shared_prefix) do
-          # did not match extension node
           nil ->
+            # did not match extension node
             {nil, proof}
 
           rest ->
-            construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+            construct_proof({next_node, trie}, rest, proof)
         end
 
       {:ext, shared_prefix, next_node} ->
@@ -68,14 +61,17 @@ defmodule MerklePatriciaTree.Proof do
             {nil, proof}
 
           rest ->
-            insert_proof_db(next_node, trie.db, proof)
-            construct_proof(Trie.get_next_node(next_node, trie), rest, proof)
+            node = insert_proof_db(next_node, trie.db, proof)
+            construct_proof({node, trie}, rest, proof)
         end
+
+      _ ->
+        {nil, proof}
     end
   end
 
-  defp construct_proof(trie, [], proof) do
-    case Node.decode_trie(trie) do
+  defp construct_proof({node, _trie}, [], proof) do
+    case Node.decode_node(node, proof) do
       {:branch, branches} ->
         {List.last(branches), proof}
 
@@ -92,7 +88,10 @@ defmodule MerklePatriciaTree.Proof do
   """
   @spec verify_proof(Trie.key(), Trie.value(), binary(), Trie.t()) :: :ok
   def verify_proof(key, value, hash, proof) do
-    case decode_node(hash, proof) do
+    ## TODO : handle when there is no value into the db
+    {:ok, node} = read_from_db(proof.db, hash)
+
+    case decode_node(ExRLP.decode(node), nil, proof) do
       :error -> false
       node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
     end
@@ -101,7 +100,7 @@ defmodule MerklePatriciaTree.Proof do
   defp int_verify_proof(path, {:ext, shared_prefix, next_node}, value, proof) do
     case ListHelper.get_postfix(path, shared_prefix) do
       nil -> false
-      rest -> int_verify_proof(rest, decode_node(next_node, proof), value, proof)
+      rest -> int_verify_proof(rest, decode_node(next_node, nil, proof), value, proof)
     end
   end
 
@@ -115,7 +114,7 @@ defmodule MerklePatriciaTree.Proof do
         false
 
       next_node ->
-        int_verify_proof(rest, decode_node(next_node, proof), value, proof)
+        int_verify_proof(rest, decode_node(next_node, nil, proof), value, proof)
     end
   end
 
@@ -125,20 +124,56 @@ defmodule MerklePatriciaTree.Proof do
 
   defp int_verify_proof(_path, _node, _value, _proof), do: false
 
-  defp decode_node(hash, proof) when is_binary(hash) and byte_size(hash) == 32 do
-    case read_from_db(proof, hash) do
-      {:ok, node} -> decode_node(ExRLP.decode(node), proof)
-      _ -> :error
+  defp decode_node(node, trie, proof) do
+    case node do
+      node when is_list(node) and length(node) == 17 ->
+        {:branch, node}
+
+      node when is_binary(node) ->
+        rlp_node =
+          if byte_size(node) == 32 do
+            {:ok, rlp} = read_from_db(proof.db, node)
+            rlp
+          else
+            node
+          end
+
+        decode_node(ExRLP.decode(rlp_node), trie, proof)
+
+      [hp_k, v] ->
+        {prefix, is_leaf} = HexPrefix.decode(hp_k)
+
+        if is_leaf do
+          {:leaf, prefix, v}
+        else
+          build_ext(prefix, v, trie, proof)
+        end
+
+      nil -> :empty
     end
   end
 
-  defp decode_node(node, _proof), do: Node.decode_node(node)
+  defp build_ext(prefix, hash, nil, proof) when byte_size(hash) == 32 do
+    {:ok, rlp_node} = read_from_db(proof.db, hash)
+    {:ext, prefix, ExRLP.decode(rlp_node)}
+  end
+
+  defp build_ext(prefix, hash, trie, proof) when is_binary(hash) and byte_size(hash) == 32 do
+    rlp_node = insert_proof_db(hash, trie.db, proof)
+    {:ext, prefix, ExRLP.decode(rlp_node)}
+  end
+
+  defp build_ext(prefix, hash, _trie, _proof) do
+    IO.inspect("3")
+    {:ext, prefix, hash}
+  end
 
   ## DB operations
 
   defp insert_proof_db(hash, db, proof) do
     {:ok, node} = DB.get(db, hash)
-    DB.put!(proof.db, hash, node)
+    :ok = DB.put!(proof.db, hash, node)
+    node
   end
 
   defp read_from_db(db, hash), do: DB.get(db, hash)

@@ -36,7 +36,7 @@ create an update a trie.
   ## Examples
 
     iex> trie =
-    ...>    MerklePatriciaTree.Test.random_ets_db()
+    ...>    MerklePatriciaTree.DB.ETS.random_ets_db()
     ...>    |> MerklePatriciaTree.Trie.new()
     ...>    |> MerklePatriciaTree.Trie.update(<<0x01::4, 0x02::4>>, "wee")
     ...>    |> MerklePatriciaTree.Trie.update(<<0x01::4, 0x02::4, 0x03::4>>, "cool")

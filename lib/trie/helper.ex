@@ -38,6 +38,6 @@ defmodule MerklePatriciaTree.Trie.Helper do
   """
   @spec get_binary([integer()]) :: binary()
   def get_binary(l) do
-    for x <- l, into: <<>>, do: <<x::4>>
+    List.foldl(l, <<>>, fn x, acc -> <<acc::bitstring, <<x::4>>::bitstring>> end)
   end
 end

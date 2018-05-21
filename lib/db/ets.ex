@@ -6,6 +6,7 @@ defmodule MerklePatriciaTree.DB.ETS do
 
   alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.Trie
+  alias MerklePatriciaTree.Utils
 
   @behaviour MerklePatriciaTree.DB
 
@@ -38,5 +39,22 @@ defmodule MerklePatriciaTree.DB.ETS do
     case :ets.insert(db_ref, {key, value}) do
       true -> :ok
     end
+  end
+
+  @doc """
+  Returns a random :ets database suitable for testing
+
+  ## Examples
+
+      iex> {MerklePatriciaTree.DB.ETS, db_ref} = random_ets_db()
+      iex> :ets.info(db_ref)[:type]
+      :set
+
+      iex> {MerklePatriciaTree.DB.ETS, db_ref} = random_ets_db(:test1)
+      iex> :ets.info(db_ref)[:name]
+      :test1
+  """
+  def random_ets_db(name \\ nil) do
+    init(name || Utils.random_atom(20))
   end
 end

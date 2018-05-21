@@ -3,21 +3,14 @@ defmodule MerklePatriciaTree.TrieTest do
   doctest MerklePatriciaTree.Trie
 
   alias MerklePatriciaTree.Trie
+  alias MerklePatriciaTree.Utils
+  alias MerklePatriciaTree.DB.ETS
   alias MerklePatriciaTree.Trie.Verifier
-  alias MerklePatriciaTree.Test
 
   @max_32_bits 4_294_967_296
 
   setup do
-    db = Test.random_ets_db()
-
-    {:ok, %{db: db}}
-  end
-
-  test "create trie" do
-    trie = Trie.new(MerklePatriciaTree.Test.random_ets_db())
-
-    assert Trie.get(trie, <<0x01, 0x02, 0x03>>) == nil
+    {:ok, %{db: ETS.random_ets_db()}}
   end
 
   describe "get" do
@@ -77,7 +70,10 @@ defmodule MerklePatriciaTree.TrieTest do
         trie
         | root_hash:
             [0x01]
-            |> extension_node(branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool"))
+            |> extension_node(
+              branch_node([leaf_node([0x02], "hi") | blanks(15)], "cool")
+              |> MerklePatriciaTree.Trie.Node.encode_node(trie)
+            )
             |> ExRLP.encode()
             |> store(db)
       }
@@ -129,8 +125,8 @@ defmodule MerklePatriciaTree.TrieTest do
       trie_2 = Trie.update(trie, <<0x01::4, 0x01::4, 0x02::4>>, "hello")
 
       assert trie_2.root_hash ==
-               <<73, 98, 206, 73, 94, 192, 23, 36, 174, 248, 169, 73, 103, 133, 200, 167, 68, 83,
-                 86, 207, 246, 91, 200, 242, 14, 115, 208, 252, 28, 74, 245, 130>>
+               <<253, 254, 116, 63, 177, 182, 47, 113, 12, 215, 156, 210, 120, 194, 126, 203, 245,
+                 185, 190, 106, 252, 55, 165, 227, 244, 197, 162, 154, 240, 232, 98, 109>>
     end
 
     test "update a leaf value (when stored directly)", %{db: db} do
@@ -156,16 +152,16 @@ defmodule MerklePatriciaTree.TrieTest do
       trie =
         db
         |> Trie.new()
-        |> Trie.update(<<0x01::4, 0x02::4>>, "wee")
-        |> Trie.update(<<0x01::4, 0x02::4, 0x03::4>>, "cool")
+        |> Trie.update(<<1::4, 2::4>>, "first")
+        |> Trie.update(<<1::4, 2::4, 3::4>>, <<"cool">>)
 
-      trie_2 = Trie.update(trie, <<0x01::4, 0x02::4, 0x03::4>>, "cooler")
+      trie_2 = Trie.update(trie, <<1::4, 2::4, 3::4>>, <<"cooler">>)
 
-      assert Trie.get(trie, <<0x01::4, 0x02::4, 0x03::4>>) == "cool"
-      assert Trie.get(trie_2, <<0x01::4>>) == nil
-      assert Trie.get(trie_2, <<0x01::4, 0x02::4>>) == "wee"
-      assert Trie.get(trie_2, <<0x01::4, 0x02::4, 0x03::4>>) == "cooler"
-      assert Trie.get(trie_2, <<0x01::4, 0x02::4, 0x03::4, 0x04::4>>) == nil
+      assert Trie.get(trie, <<1::4, 2::4, 3::4>>) == <<"cool">>
+      assert Trie.get(trie_2, <<1::4>>) == nil
+      assert Trie.get(trie_2, <<1::4, 2::4>>) == "first"
+      assert Trie.get(trie_2, <<1::4, 2::4, 3::4>>) == <<"cooler">>
+      assert Trie.get(trie_2, <<1::4, 2::4, 3::4, 4::4>>) == nil
     end
 
     test "update multiple keys", %{db: db} do
@@ -299,53 +295,63 @@ defmodule MerklePatriciaTree.TrieTest do
     end
   end
 
-  describe "Delete from trie" do
-    test "Simple node from trie", %{db: db} do
-      trie =
-        Trie.new(db)
-        |> Trie.update(<<15::4, 10::4, 5::4, 11::4, 5::4, 1::4>>, "a")
-        |> Trie.update(<<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>, "b")
-        |> Trie.update(<<6::4, 1::4, 10::4, 10::4, 5::4, 7::4>>, "c")
-        |> Trie.update(<<6::4, 1::4, 11::4, 10::4, 5::4, 7::4>>, "c")
+  @tag timeout: 100_000_000
+  test "Read from random trie", %{db: db} do
+    trie_list = get_random_tree_list(1000)
+    trie = create_trie(trie_list, Trie.new(db))
 
-      assert Trie.get(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>) == "b"
+    Enum.each(trie_list, fn {key, value} ->
+      assert ^value = Trie.get(trie, key)
+    end)
+  end
 
-      trie = Trie.delete(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>)
-      assert Trie.get(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>) == nil
-    end
+  @tag timeout: 100_000_000
+  test "Delete a node from trie", %{db: db} do
+    trie =
+      Trie.new(db)
+      |> Trie.update(<<15::4, 10::4, 5::4, 11::4, 5::4, 1::4>>, "a")
+      |> Trie.update(<<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>, "b")
+      |> Trie.update(<<6::4, 1::4, 10::4, 10::4, 5::4, 7::4>>, "c")
+      |> Trie.update(<<6::4, 1::4, 11::4, 10::4, 5::4, 7::4>>, "c")
 
-    test "Random nodes from random trie" do
-      %{db: {_, db_ref1}} = init_trie1 = Trie.new(Test.random_ets_db())
-      %{db: {_, db_ref2}} = init_trie2 = Trie.new(Test.random_ets_db())
+    assert Trie.get(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>) == "b"
 
-      full_trie_list = Enum.uniq_by(get_random_tree_list(20_000), fn {x, _} -> x end)
+    trie = Trie.delete(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>)
+    assert Trie.get(trie, <<15::4, 11::4, 1::4, 14::4, 9::4, 7::4>>) == nil
+  end
 
-      full_trie =
-        Enum.reduce(full_trie_list, init_trie1, fn {key, val}, acc_trie ->
-          MerklePatriciaTree.Trie.update(acc_trie, key, val)
-        end)
+  @tag timeout: 100_000_000
+  test "Delete random nodes from random trie" do
+    %{db: {_, db_ref1}} = init_trie1 = Trie.new(ETS.random_ets_db())
+    %{db: {_, db_ref2}} = init_trie2 = Trie.new(ETS.random_ets_db())
 
-      ## Reducing the full list trie randomly and
-      ## getting the removed keys as well.
-      {keys, sub_trie_list} = reduce_trie(15_000, full_trie_list)
+    full_trie_list = Enum.uniq_by(get_random_tree_list(1000), fn {x, _} -> x end)
 
-      constructed_trie =
-        Enum.reduce(sub_trie_list, init_trie2, fn {key, val}, acc_trie ->
-          Trie.update(acc_trie, key, val)
-        end)
+    full_trie =
+      Enum.reduce(full_trie_list, init_trie1, fn {key, val}, acc_trie ->
+        Trie.update(acc_trie, key, val)
+      end)
 
-      ## We are going to delete the previously reduced
-      ## keys from the full trie. The result should be
-      ## root hash equal to the constructed trie.
-      reconstructed_trie =
-        Enum.reduce(keys, full_trie, fn {key, _}, acc_trie ->
-          Trie.delete(acc_trie, key)
-        end)
+    ## Reducing the full list trie randomly and
+    ## getting the removed keys as well.
+    {keys, sub_trie_list} = reduce_trie(500, full_trie_list)
 
-      assert true = :ets.delete(db_ref1)
-      assert true = :ets.delete(db_ref2)
-      assert constructed_trie.root_hash == reconstructed_trie.root_hash
-    end
+    constructed_trie =
+      Enum.reduce(sub_trie_list, init_trie2, fn {key, val}, acc_trie ->
+        Trie.update(acc_trie, key, val)
+      end)
+
+    ## We are going to delete the previously reduced
+    ## keys from the full trie. The result should be
+    ## root hash equal to the constructed trie.
+    reconstructed_trie =
+      Enum.reduce(keys, full_trie, fn {key, _}, acc_trie ->
+        Trie.delete(acc_trie, key)
+      end)
+
+    assert true = :ets.delete(db_ref1)
+    assert true = :ets.delete(db_ref2)
+    assert constructed_trie.root_hash == reconstructed_trie.root_hash
   end
 
   def leaf_node(key_end, value) do
@@ -364,18 +370,20 @@ defmodule MerklePatriciaTree.TrieTest do
   end
 
   def branch_node(branches, value) when length(branches) == 16 do
-    branches ++ [value]
+    {:branch, branches ++ [value]}
   end
 
   def blanks(n) do
     for _ <- 1..n, do: []
   end
 
-  def random_key() do
-    <<:rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32,
-      :rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32,
-      :rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32,
-      :rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32>>
+  @doc """
+  Creates trie from trie list by entering each element
+  """
+  def create_trie(trie_list, empty_trie) do
+    Enum.reduce(trie_list, empty_trie, fn {key, val}, acc_trie ->
+      Trie.update(acc_trie, key, val)
+    end)
   end
 
   def random_hex_key() do
@@ -386,9 +394,14 @@ defmodule MerklePatriciaTree.TrieTest do
       :rand.uniform(15)::4, :rand.uniform(15)::4>>
   end
 
-  def random_value() do
-    <<:rand.uniform(@max_32_bits)::32>>
+  def random_key() do
+    <<:rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32,
+      :rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32,
+      :rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32,
+      :rand.uniform(@max_32_bits)::32, :rand.uniform(@max_32_bits)::32>>
   end
+
+  def random_value(), do: Utils.random_string(40)
 
   def reduce_trie(num_nodes, list) do
     popup_random_from_trie(

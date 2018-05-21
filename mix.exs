@@ -47,8 +47,9 @@ defmodule MerklePatriciaTree.Mixfile do
       {:hex_prefix, "~> 0.1.0"},
       {:ex_rlp, "~> 0.2.1"},
       {:keccakf1600, "~> 2.0.0", hex: :keccakf1600_orig},
-      {:exleveldb, "~> 0.13"},
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
+      {:exleveldb, "~> 0.11.1"},
+      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
+      {:enacl, [github: "jlouis/enacl", ref: "c8403ab", manager: :rebar]}
     ]
   end
 end
