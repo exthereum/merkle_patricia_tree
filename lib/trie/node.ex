@@ -65,7 +65,7 @@ defmodule MerklePatriciaTree.Trie.Node do
        elem, acc when is_binary(elem) ->
          try do
            ## Ensure that the branch's value is not decoded
-           if length(acc) < 17 do
+           if length(acc) != 16 do
              acc ++ [ExRLP.decode(elem)]
            else
              acc ++ [elem]
