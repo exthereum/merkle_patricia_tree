@@ -49,7 +49,7 @@ defmodule MerklePatriciaTree.Mixfile do
       {:keccakf1600, "~> 2.0.0", hex: :keccakf1600_orig},
       {:exleveldb, "~> 0.11.1"},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      {:enacl, [github: "jlouis/enacl", ref: "c8403ab", manager: :rebar]}
+      {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true}
     ]
   end
 end
