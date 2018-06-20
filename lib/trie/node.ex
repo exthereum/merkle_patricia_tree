@@ -58,6 +58,9 @@ defmodule MerklePatriciaTree.Trie.Node do
        "", acc ->
          acc ++ [""]
 
+       [_, _] = elem, acc ->
+         acc ++ [elem]
+
        elem, acc when is_binary(elem) and byte_size(elem) == 32 ->
          {:ok, node} = DB.get(trie.db, elem)
          acc ++ [ExRLP.decode(node)]
@@ -118,6 +121,10 @@ defmodule MerklePatriciaTree.Trie.Node do
   end
 
   defp encode_node_type({:ext, shared_prefix, next_node}, trie) when is_list(next_node) do
+    encode_node_type({:ext, shared_prefix, ExRLP.encode(next_node)}, trie)
+  end
+
+  defp encode_node_type({:ext, shared_prefix, {:branch, next_node}}, trie) do
     encode_node_type({:ext, shared_prefix, ExRLP.encode(next_node)}, trie)
   end
 
