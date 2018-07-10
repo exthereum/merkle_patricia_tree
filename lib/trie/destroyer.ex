@@ -140,7 +140,7 @@ defmodule MerklePatriciaTree.Trie.Destroyer do
         {:leaf, [], value}
 
       {next, next_node} ->
-        case Node.decode_node(trie, next_node) do
+        case Node.decode_node(next_node, trie) do
           {:leaf, path, val} ->
             {:leaf, [next] ++ path, val}
 
