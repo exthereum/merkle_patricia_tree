@@ -165,7 +165,7 @@ defmodule MerklePatriciaTree.Proof do
 
   @spec decode_node_and_check_hash_with_trie_lookup(binary(), Trie.t()) :: {:ok, decoded_node()} | decode_node_error()
   defp decode_node_and_check_hash_with_trie_lookup(hash, trie) do
-    decode_node_and_check_hash(hash, fn hash -> read_from_db(trie.db, hash) end)
+    decode_node_and_check_hash(hash, &read_from_db(trie.db, &1))
   end
 
   @spec decode_node_and_check_hash_with_trie_copy(binary(), Trie.t(), Trie.t()) :: {:ok, decoded_node()} | decode_node_error()
