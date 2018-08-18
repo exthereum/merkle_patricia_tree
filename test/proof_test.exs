@@ -3,6 +3,7 @@ defmodule MerklePatriciaTreeProofTest do
 
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.DB.LevelDB
+  alias MerklePatriciaTree.DB
   alias MerklePatriciaTree.Proof
   alias MerklePatriciaTree.Utils
 
@@ -15,7 +16,40 @@ defmodule MerklePatriciaTreeProofTest do
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie"))
       {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
 
-      assert true = Proof.verify_proof(key, value, trie.root_hash, proof)
+      assert true == Proof.verify_proof(key, value, trie.root_hash, proof)
+
+      {_, proof_ref} = proof.db
+      assert :ok = Exleveldb.close(proof_ref)
+    end)
+
+    {_, db_ref} = trie.db
+    :ok = Exleveldb.close(db_ref)
+  end
+
+  @tag  timeout: 30_000_000
+  test "Verification with empty DB fails" do
+    {trie, list} = create_random_trie_test()
+    proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_empty"))
+
+    Enum.each(list, fn{key, value} ->
+      assert false == Proof.verify_proof(key, value, trie.root_hash, proof_trie)
+    end)
+
+    {_, db_ref} = trie.db
+    :ok = Exleveldb.close(db_ref)
+  end
+
+  @tag timeout: 30_000_000
+  test "Verification with malformed DB fails" do
+    {trie, list} = create_random_trie_test()
+
+    Enum.each(list, fn{key, value} ->
+      proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_bogus"))
+      {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
+
+      DB.put!(proof.db, trie.root_hash, <<1,2,3,4,5,6,7,8>>)
+
+      assert false == Proof.verify_proof(key, value, trie.root_hash, proof)
 
       {_, proof_ref} = proof.db
       assert :ok = Exleveldb.close(proof_ref)
