@@ -17,7 +17,7 @@ defmodule MerklePatriciaTreeProofTest do
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie"))
       {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
 
-      assert true == Proof.verify_proof(key, value, trie.root_hash, proof)
+      assert :ok === Proof.verify_proof(key, value, trie.root_hash, proof)
 
       {_, proof_ref} = proof.db
       assert :ok = Exleveldb.close(proof_ref)
@@ -33,7 +33,7 @@ defmodule MerklePatriciaTreeProofTest do
     proof = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_empty"))
 
     Enum.each(list, fn{key, value} ->
-      assert false == Proof.verify_proof(key, value, trie.root_hash, proof)
+      assert {:error, _} = Proof.verify_proof(key, value, trie.root_hash, proof)
     end)
 
     {_, proof_ref} = proof.db
@@ -51,9 +51,9 @@ defmodule MerklePatriciaTreeProofTest do
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_malformed"))
       {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
 
-      DB.put!(proof.db, trie.root_hash, <<1,2,3,4,5,6,7,8>>)
+      DB.put!(proof.db, trie.root_hash, <<1, 2, 3, 4, 5, 6, 7, 8>>)
 
-      assert false == Proof.verify_proof(key, value, trie.root_hash, proof)
+      assert {:error, _} = Proof.verify_proof(key, value, trie.root_hash, proof)
 
       {_, proof_ref} = proof.db
       :ok = Exleveldb.close(proof_ref)
@@ -68,7 +68,7 @@ defmodule MerklePatriciaTreeProofTest do
       {trie, list} = create_random_trie_test()
 
       bogus_key = <<0x1e, 0x2f>>
-      bogus_val = <<1,2,3,4>>
+      bogus_val = <<1, 2, 3, 4>>
 
       bogus_proof = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_bogus"))
       DB.put!(bogus_proof.db, trie.root_hash, ExRLP.encode([
@@ -76,7 +76,7 @@ defmodule MerklePatriciaTreeProofTest do
       bogus_val
       ]))
 
-      assert false == Proof.verify_proof(bogus_key, bogus_val, trie.root_hash, bogus_proof)
+      assert {:error, _} = Proof.verify_proof(bogus_key, bogus_val, trie.root_hash, bogus_proof)
 
       {_, proof_ref} = bogus_proof.db
       :ok = Exleveldb.close(proof_ref)
