@@ -86,8 +86,8 @@ defmodule MerklePatriciaTree.Proof do
   Verifying that particular path leads to a given value.
   """
   @spec verify_proof(Trie.key(), Trie.value(), binary(), Trie.t()) :: :ok | proof_verification_error()
-  def verify_proof(key, value, hash, proof) do
-    case decode_node_and_check_hash_with_trie_lookup(hash, proof) do
+  def verify_proof(key, value, root_hash, proof) do
+    case decode_node_and_check_hash_with_trie_lookup(root_hash, proof) do
       {:ok, decoded} ->
         int_verify_proof(Helper.get_nibbles(key), decoded, value, proof)
       {:error, _} = err ->
@@ -95,7 +95,22 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  @spec int_verify_proof(list(), decoded_node(), Trie.value(), Trie.t()) :: :ok | proof_verification_error()
+  @doc """
+  Lookups a key in a proof.
+  """
+  @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: Trie.value() | proof_verification_error()
+  def lookup_proof(key, root_hash, proof) do
+    case verify_proof(key, :lookup, root_hash, proof) do
+      {:error, {:bad_val, val}} ->
+        val
+      :ok ->
+        {:error, :invalid_proof}
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @spec int_verify_proof(list(), decoded_node(), Trie.value() | :lookup, Trie.t()) :: :ok | proof_verification_error()
   defp int_verify_proof(path, {:ext, [shared_prefix, next_hash]}, value, proof) do
     case ListHelper.get_postfix(path, shared_prefix) do
       nil -> {:error, :invalid_proof}
@@ -111,7 +126,7 @@ defmodule MerklePatriciaTree.Proof do
 
   defp int_verify_proof([], {:branch, branch}, value, _) do
     found_val = List.last(branch)
-    if(found_val == value) do
+    if(value !== :lookup and found_val == value) do
       :ok
     else
       {:error, {:bad_val, found_val}}
@@ -135,7 +150,7 @@ defmodule MerklePatriciaTree.Proof do
     cond do
       path != shared_prefix ->
         {:error, :invalid_proof}
-      node_val != value ->
+      node_val != value or value === :lookup ->
         {:error, {:bad_val, node_val}}
       true ->
         :ok
