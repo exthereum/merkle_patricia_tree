@@ -16,8 +16,10 @@ defmodule MerklePatriciaTree.Proof do
     ## Inserting the value of the root hash into the proof db
     node = insert_proof_db(trie.root_hash, trie.db, proof_db)
     ## Constructing the proof trie going through the rest of the nodes
-    construct_proof({ExRLP.decode(node), trie}, Helper.get_nibbles(key), proof_db)
+    construct_proof({rlp_decode(node), trie}, Helper.get_nibbles(key), proof_db)
   end
+
+  defp construct_proof({:error, _}, _, proof), do: {nil, proof}
 
   defp construct_proof({node, trie}, nibbles = [nibble | rest], proof) do
     case decode_node(node, trie, proof) do
@@ -90,7 +92,7 @@ defmodule MerklePatriciaTree.Proof do
   def verify_proof(key, value, hash, proof) do
     case read_from_db(proof.db, hash) do
       {:ok, node} ->
-        case decode_node(ExRLP.decode(node), nil, proof) do
+        case decode_node(rlp_decode(node), nil, proof) do
           :error -> false
           node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
         end
@@ -126,6 +128,8 @@ defmodule MerklePatriciaTree.Proof do
 
   defp int_verify_proof(_path, _node, _value, _proof), do: false
 
+  defp decode_node(:error, _, _), do: :error
+
   defp decode_node(node, trie, proof) do
     case node do
       node when is_list(node) and length(node) == 17 ->
@@ -144,7 +148,7 @@ defmodule MerklePatriciaTree.Proof do
             node
           end
 
-        decode_node(ExRLP.decode(rlp_node), trie, proof)
+        decode_node(rlp_decode(rlp_node), trie, proof)
 
       [hp_k, v] ->
         {prefix, is_leaf} = HexPrefix.decode(hp_k)
@@ -162,7 +166,12 @@ defmodule MerklePatriciaTree.Proof do
   defp build_ext(prefix, hash, nil, proof) when byte_size(hash) == 32 do
     case read_from_db(proof.db, hash) do
       {:ok, rlp_node} ->
-        {:ext, prefix, ExRLP.decode(rlp_node)}
+        case rlp_decode(rlp_node) do
+            :error ->
+              :error
+            v ->
+              {:ext, prefix, v}
+          end
       :not_found ->
         :error
     end
@@ -170,12 +179,27 @@ defmodule MerklePatriciaTree.Proof do
 
   defp build_ext(prefix, hash, trie, proof) when is_binary(hash) and byte_size(hash) == 32 do
     rlp_node = insert_proof_db(hash, trie.db, proof)
-    {:ext, prefix, ExRLP.decode(rlp_node)}
+    case rlp_decode(rlp_node) do
+      :error ->
+        :error
+      v ->
+        {:ext, prefix, v}
+    end
   end
 
   defp build_ext(prefix, hash, _trie, _proof) do
     {:ext, prefix, hash}
   end
+
+  defp rlp_decode(val) when is_binary(val) do
+    try do
+      ExRLP.decode(val)
+    rescue
+      ArgumentError -> :error
+    end
+  end
+
+  defp rlp_decode(_), do: :error
 
   ## DB operations
 
