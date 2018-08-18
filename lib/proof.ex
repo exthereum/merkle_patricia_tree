@@ -182,7 +182,7 @@ defmodule MerklePatriciaTree.Proof do
         case Utils.hash(rlp) do
           ^hash ->
             decode_node_and_check_hash(rlp, hash_lookup_fun)
-          k ->
+          _ ->
             {:error, :bad_hash}
         end
     end
@@ -199,7 +199,7 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  defp decode_node_and_check_hash(a, b) do
+  defp decode_node_and_check_hash(_, _) do
     {:error, :invalid_node}
   end
 
