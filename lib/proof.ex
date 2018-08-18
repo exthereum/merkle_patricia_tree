@@ -88,12 +88,14 @@ defmodule MerklePatriciaTree.Proof do
   """
   @spec verify_proof(Trie.key(), Trie.value(), binary(), Trie.t()) :: :ok
   def verify_proof(key, value, hash, proof) do
-    ## TODO : handle when there is no value into the db
-    {:ok, node} = read_from_db(proof.db, hash)
-
-    case decode_node(ExRLP.decode(node), nil, proof) do
-      :error -> false
-      node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
+    case read_from_db(proof.db, hash) do
+      {:ok, node} ->
+        case decode_node(ExRLP.decode(node), nil, proof) do
+          :error -> false
+          node -> int_verify_proof(Helper.get_nibbles(key), node, value, proof)
+        end
+      :not_found ->
+        false
     end
   end
 
@@ -132,8 +134,12 @@ defmodule MerklePatriciaTree.Proof do
       node when is_binary(node) ->
         rlp_node =
           if byte_size(node) == 32 do
-            {:ok, rlp} = read_from_db(proof.db, node)
-            rlp
+            case read_from_db(proof.db, node) do
+              {:ok, rlp} ->
+                rlp
+              :not_found ->
+                :error
+            end
           else
             node
           end
@@ -154,8 +160,12 @@ defmodule MerklePatriciaTree.Proof do
   end
 
   defp build_ext(prefix, hash, nil, proof) when byte_size(hash) == 32 do
-    {:ok, rlp_node} = read_from_db(proof.db, hash)
-    {:ext, prefix, ExRLP.decode(rlp_node)}
+    case read_from_db(proof.db, hash) do
+      {:ok, rlp_node} ->
+        {:ext, prefix, ExRLP.decode(rlp_node)}
+      :not_found ->
+        :error
+    end
   end
 
   defp build_ext(prefix, hash, trie, proof) when is_binary(hash) and byte_size(hash) == 32 do
@@ -164,7 +174,6 @@ defmodule MerklePatriciaTree.Proof do
   end
 
   defp build_ext(prefix, hash, _trie, _proof) do
-    IO.inspect("3")
     {:ext, prefix, hash}
   end
 
