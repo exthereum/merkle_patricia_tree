@@ -142,6 +142,8 @@ defmodule MerklePatriciaTree.Proof do
         case decode_node_and_check_hash_with_trie_lookup(next_node, proof) do
           {:ok, decoded} ->
             int_verify_proof(rest, decoded, value, proof)
+          {:error, _} = err ->
+            err
         end
     end
   end

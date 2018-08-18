@@ -32,7 +32,7 @@ defmodule MerklePatriciaTreeProofTest do
     {trie, list} = create_random_trie_test()
     proof = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_empty"))
 
-    Enum.each(list, fn{key, value} ->
+    Enum.each(list, fn {key, value} ->
       assert {:error, _} = Proof.verify_proof(key, value, trie.root_hash, proof)
     end)
 
@@ -47,7 +47,7 @@ defmodule MerklePatriciaTreeProofTest do
   test "Verification with malformed DB fails" do
     {trie, list} = create_random_trie_test()
 
-    Enum.each(list, fn{key, value} ->
+    Enum.each(list, fn {key, value} ->
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_malformed"))
       {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
 
@@ -65,7 +65,7 @@ defmodule MerklePatriciaTreeProofTest do
 
   @tag timeout: 30_000_000
   test "Check whether we actually check the hashes ;)" do
-      {trie, list} = create_random_trie_test()
+      {trie, _} = create_random_trie_test()
 
       bogus_key = <<0x1e, 0x2f>>
       bogus_val = <<1, 2, 3, 4>>
@@ -83,6 +83,53 @@ defmodule MerklePatriciaTreeProofTest do
 
       {_, db_ref} = trie.db
       :ok = Exleveldb.close(db_ref)
+  end
+
+  @tag timeout: 30_000_000
+  test "Test proof lookups" do
+    {trie, list} = create_random_trie_test()
+
+    Enum.each(list, fn {key, value} ->
+      proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_lookups"))
+      {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
+
+      #try to lookup an existing key
+      ^value = Proof.lookup_proof(key, trie.root_hash, proof)
+      #try to lookup an non existient key
+      {:error, _} = Proof.lookup_proof(<<0x1e, 0x2f>>, trie.root_hash, proof)
+
+      {_, proof_ref} = proof.db
+      :ok = Exleveldb.close(proof_ref)
+    end)
+
+    {_, db_ref} = trie.db
+    :ok = Exleveldb.close(db_ref)
+  end
+
+  @tag timeout: 30_000_000
+  test "Test lookups for proofs with multiple entries" do
+    {trie, list} = create_random_trie_test()
+
+    proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_lookups_with_multiple_entries"))
+
+    Enum.each(list, fn {key, value} ->
+      {^value, _} = Proof.construct_proof({trie, key, proof_trie})
+      #try to lookup an existing key
+      ^value = Proof.lookup_proof(key, trie.root_hash, proof_trie)
+      #try to lookup an non existient key
+      {:error, _} = Proof.lookup_proof(<<0x1e, 0x2f>>, trie.root_hash, proof_trie)
+    end)
+
+    #try to lookup every key
+    Enum.each(list, fn {key, value} ->
+      ^value = Proof.lookup_proof(key, trie.root_hash, proof_trie)
+    end)
+
+    {_, proof_ref} = proof_trie.db
+    :ok = Exleveldb.close(proof_ref)
+
+    {_, db_ref} = trie.db
+    :ok = Exleveldb.close(db_ref)
   end
 
   def create_random_trie_test() do
