@@ -9,7 +9,7 @@ defmodule MerklePatriciaTree.Proof do
 
   @type decoded_node() :: :empty | {atom(), list()}
   @type decode_node_error() :: {:error, :bad_hash | :missing_hash | :invalid_node}
-  @type proof_verification_error() :: {:error, :invalid_proof, {:bad_val, Trie.value()}} | decode_node_error()
+  @type proof_verification_error() :: {:error, :invalid_proof, {:bad_value, Trie.value()}} | decode_node_error()
 
   @doc """
   Building proof tree for given path by going through each node ot this path
@@ -20,28 +20,28 @@ defmodule MerklePatriciaTree.Proof do
     ## Constructing the proof trie going through the rest of the nodes
     case decode_node_and_check_hash_with_trie_copy(trie.root_hash, trie, proof_db) do
       {:ok, decoded} ->
-        int_construct_proof(decoded, trie, Helper.get_nibbles(key), proof_db)
+        internal_construct_proof(decoded, trie, Helper.get_nibbles(key), proof_db)
       {:error, _} = err ->
         err
     end
   end
 
-  @spec int_construct_proof(decoded_node(), Trie.t(), list(), Trie.t()) :: {Trie.val() | nil, Trie.t()} | decode_node_error()
-  defp int_construct_proof(:empty, _, _, proof), do: {nil, proof}
+  @spec internal_construct_proof(decoded_node(), Trie.t(), list(), Trie.t()) :: {Trie.val() | nil, Trie.t()} | decode_node_error()
+  defp internal_construct_proof(:empty, _, _, proof), do: {nil, proof}
 
-  defp int_construct_proof({:branch, branches}, _, [], proof) do
+  defp internal_construct_proof({:branch, branches}, _, [], proof) do
     {List.last(branches), proof}
   end
 
-  defp int_construct_proof({:leaf, [], v}, _, [], proof) do
-    {v, proof}
+  defp internal_construct_proof({:leaf, [], value}, _, [], proof) do
+    {value, proof}
   end
 
-  defp int_construct_proof(_, _, [], proof) do
+  defp internal_construct_proof(_, _, [], proof) do
     {nil, proof}
   end
 
-  defp int_construct_proof({:branch, branches}, trie, [nibble | rest], proof) do
+  defp internal_construct_proof({:branch, branches}, trie, [nibble | rest], proof) do
     case Enum.at(branches, nibble) do
       [] ->
         {nil, proof}
@@ -49,7 +49,7 @@ defmodule MerklePatriciaTree.Proof do
       encoded_node ->
         case decode_node_and_check_hash_with_trie_copy(encoded_node, trie, proof) do
           {:ok, decoded} ->
-            int_construct_proof(decoded, trie, rest, proof)
+            internal_construct_proof(decoded, trie, rest, proof)
           {:error, _} = err ->
             err
         end
@@ -57,14 +57,14 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  defp int_construct_proof({:leaf, [prefix, value]}, _, nibbles, proof) do
+  defp internal_construct_proof({:leaf, [prefix, value]}, _, nibbles, proof) do
     case nibbles do
           ^prefix -> {value, proof}
           _ -> {nil, proof}
         end
   end
 
-  defp int_construct_proof({:ext, [shared_prefix, next_hash]}, trie, nibbles, proof) do
+  defp internal_construct_proof({:ext, [shared_prefix, next_hash]}, trie, nibbles, proof) do
     # extension, continue walking tree if we match
     case ListHelper.get_postfix(nibbles, shared_prefix) do
       nil ->
@@ -75,7 +75,7 @@ defmodule MerklePatriciaTree.Proof do
         # we match the extension node
         case decode_node_and_check_hash_with_trie_copy(next_hash, trie, proof) do
           {:ok, decoded} ->
-            int_construct_proof(decoded, trie, rest, proof)
+            internal_construct_proof(decoded, trie, rest, proof)
           {:error, _} = err ->
             err
         end
@@ -89,7 +89,7 @@ defmodule MerklePatriciaTree.Proof do
   def verify_proof(key, value, root_hash, proof) do
     case decode_node_and_check_hash_with_trie_lookup(root_hash, proof) do
       {:ok, decoded} ->
-        int_verify_proof(Helper.get_nibbles(key), decoded, value, proof)
+        internal_verify_proof(Helper.get_nibbles(key), decoded, value, proof)
       {:error, _} = err ->
         err
     end
@@ -101,8 +101,8 @@ defmodule MerklePatriciaTree.Proof do
   @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: Trie.value() | proof_verification_error()
   def lookup_proof(key, root_hash, proof) do
     case verify_proof(key, :lookup, root_hash, proof) do
-      {:error, {:bad_val, val}} ->
-        val
+      {:error, {:bad_value, value}} ->
+        value
       :ok ->
         {:error, :invalid_proof}
       {:error, _} = err ->
@@ -110,30 +110,30 @@ defmodule MerklePatriciaTree.Proof do
     end
   end
 
-  @spec int_verify_proof(list(), decoded_node(), Trie.value() | :lookup, Trie.t()) :: :ok | proof_verification_error()
-  defp int_verify_proof(path, {:ext, [shared_prefix, next_hash]}, value, proof) do
+  @spec internal_verify_proof(list(), decoded_node(), Trie.value() | :lookup, Trie.t()) :: :ok | proof_verification_error()
+  defp internal_verify_proof(path, {:ext, [shared_prefix, next_hash]}, value, proof) do
     case ListHelper.get_postfix(path, shared_prefix) do
       nil -> {:error, :invalid_proof}
       rest ->
         case decode_node_and_check_hash_with_trie_lookup(next_hash, proof) do
           {:ok, decoded} ->
-            int_verify_proof(rest, decoded, value, proof)
+            internal_verify_proof(rest, decoded, value, proof)
           {:error, _} = err ->
             err
         end
     end
   end
 
-  defp int_verify_proof([], {:branch, branch}, value, _) do
-    found_val = List.last(branch)
-    if(value !== :lookup and found_val == value) do
+  defp internal_verify_proof([], {:branch, branch}, value, _) do
+    found_value = List.last(branch)
+    if(value !== :lookup and found_value == value) do
       :ok
     else
-      {:error, {:bad_val, found_val}}
+      {:error, {:bad_value, found_value}}
     end
   end
 
-  defp int_verify_proof([nibble | rest], {:branch, branch}, value, proof) do
+  defp internal_verify_proof([nibble | rest], {:branch, branch}, value, proof) do
     case Enum.at(branch, nibble) do
       [] ->
         {:error, :invalid_proof}
@@ -141,25 +141,25 @@ defmodule MerklePatriciaTree.Proof do
       next_node ->
         case decode_node_and_check_hash_with_trie_lookup(next_node, proof) do
           {:ok, decoded} ->
-            int_verify_proof(rest, decoded, value, proof)
+            internal_verify_proof(rest, decoded, value, proof)
           {:error, _} = err ->
             err
         end
     end
   end
 
-  defp int_verify_proof(path, {:leaf, [shared_prefix, node_val]}, value, _) do
+  defp internal_verify_proof(path, {:leaf, [shared_prefix, node_value]}, value, _) do
     cond do
       path != shared_prefix ->
         {:error, :invalid_proof}
-      node_val != value or value === :lookup ->
-        {:error, {:bad_val, node_val}}
+      node_value != value or value === :lookup ->
+        {:error, {:bad_value, node_value}}
       true ->
         :ok
     end
   end
 
-  defp int_verify_proof(_, _, _, _) do
+  defp internal_verify_proof(_, _, _, _) do
     {:error, :invalid_proof}
   end
 
@@ -208,14 +208,14 @@ defmodule MerklePatriciaTree.Proof do
     {:ok, {:branch, branch}}
   end
 
-  defp decode_node([hp_k, v]) do
-    {prefix, is_leaf} = HexPrefix.decode(hp_k)
+  defp decode_node([hex_prefix, value]) do
+    {prefix, is_leaf} = HexPrefix.decode(hex_prefix)
     if is_leaf do
-        {:ok, {:leaf, [prefix, v]}}
+        {:ok, {:leaf, [prefix, value]}}
       else
-      #extension node must contain a proper hash
-      if(is_binary(v) and byte_size(v) == 32) do
-        {:ok, {:ext, [prefix, v]}}
+      # extension node must contain a proper hash
+      if(is_binary(value) and byte_size(value) == 32) do
+        {:ok, {:ext, [prefix, value]}}
       else
         {:error, :invalid_node}
       end
@@ -224,10 +224,10 @@ defmodule MerklePatriciaTree.Proof do
 
   defp decode_node(_), do: {:error, :invalid_node}
 
-  @spec rlp_decode(binary()) :: list()
-  defp rlp_decode(val) when is_binary(val) do
+  @spec rlp_decode(binary()) :: list() | :error
+  defp rlp_decode(rlp) when is_binary(rlp) do
     try do
-      ExRLP.decode(val)
+      ExRLP.decode(rlp)
     rescue
       ArgumentError -> :error
     end
@@ -248,8 +248,8 @@ defmodule MerklePatriciaTree.Proof do
 
   defp read_from_db(db, hash) do
     case DB.get(db, hash) do
-      {:ok, val} ->
-        val
+      {:ok, value} ->
+        value
       :not_found ->
         :not_found
     end
