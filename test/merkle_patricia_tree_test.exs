@@ -35,6 +35,18 @@ defmodule MerklePatriciaTreeTest do
     end
   end
 
+  test "Updating test" do
+    db = MerklePatriciaTree.DB.ETS.random_ets_db()
+    trie1 = Trie.new(db)
+    trie2 = Trie.new(db)
+    trie1 = Trie.update(trie1, "key", "oldvalue")
+    trie1 = Trie.update(trie1, "key_loner", "loner_key_value")
+    trie1 = Trie.update(trie1, "key", "newvalue")
+    trie2 = Trie.update(trie2, "key", "newvalue")
+    trie2 = Trie.update(trie2, "key_loner", "loner_key_value")
+    assert trie1.root_hash == trie2.root_hash
+  end
+
   def read_test_file(type) do
     {:ok, body} = File.read(test_file_name(type))
     Poison.decode!(body)
