@@ -56,7 +56,11 @@ defmodule MerklePatriciaTree.Trie.Builder do
   # Merge right onto an extension node, we'll need to push this down to our value
   defp trie_put_key({:ext, shared_prefix, node_hash}, new_prefix, new_value, trie)
        when shared_prefix == new_prefix do
-    next_node = Node.decode_trie(node_hash |> Trie.into(trie)) |> put_key([], new_value, trie)
+    next_node =
+      Node.decode_trie(node_hash |> Trie.into(trie))
+      |> put_key([], new_value, trie)
+      |> Node.encode_node(trie)
+
     {:ext, shared_prefix, next_node}
   end
 

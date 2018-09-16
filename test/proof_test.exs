@@ -27,7 +27,7 @@ defmodule MerklePatriciaTreeProofTest do
     :ok = Exleveldb.close(db_ref)
   end
 
-  @tag  timeout: 30_000_000
+  @tag timeout: 30_000_000
   test "Verification with empty DB fails" do
     {trie, list} = create_random_trie_test()
     proof = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_empty"))
@@ -65,24 +65,29 @@ defmodule MerklePatriciaTreeProofTest do
 
   @tag timeout: 30_000_000
   test "Check whether we actually check the hashes ;)" do
-      {trie, _} = create_random_trie_test()
+    {trie, _} = create_random_trie_test()
 
-      bogus_key = <<0x1e, 0x2f>>
-      bogus_val = <<1, 2, 3, 4>>
+    bogus_key = <<0x1E, 0x2F>>
+    bogus_val = <<1, 2, 3, 4>>
 
-      bogus_proof = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_bogus"))
-      DB.put!(bogus_proof.db, trie.root_hash, ExRLP.encode([
-      HexPrefix.encode({Helper.get_nibbles(bogus_key), true}),
-      bogus_val
-      ]))
+    bogus_proof = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_bogus"))
 
-      assert {:error, _} = Proof.verify_proof(bogus_key, bogus_val, trie.root_hash, bogus_proof)
+    DB.put!(
+      bogus_proof.db,
+      trie.root_hash,
+      ExRLP.encode([
+        HexPrefix.encode({Helper.get_nibbles(bogus_key), true}),
+        bogus_val
+      ])
+    )
 
-      {_, proof_ref} = bogus_proof.db
-      :ok = Exleveldb.close(proof_ref)
+    assert {:error, _} = Proof.verify_proof(bogus_key, bogus_val, trie.root_hash, bogus_proof)
 
-      {_, db_ref} = trie.db
-      :ok = Exleveldb.close(db_ref)
+    {_, proof_ref} = bogus_proof.db
+    :ok = Exleveldb.close(proof_ref)
+
+    {_, db_ref} = trie.db
+    :ok = Exleveldb.close(db_ref)
   end
 
   @tag timeout: 30_000_000
@@ -93,10 +98,10 @@ defmodule MerklePatriciaTreeProofTest do
       proof_trie = Trie.new(LevelDB.init("/tmp/patricia_proof_trie_lookups"))
       {^value, proof} = Proof.construct_proof({trie, key, proof_trie})
 
-      #try to lookup an existing key
+      # try to lookup an existing key
       ^value = Proof.lookup_proof(key, trie.root_hash, proof)
-      #try to lookup an non existient key
-      {:error, _} = Proof.lookup_proof(<<0x1e, 0x2f>>, trie.root_hash, proof)
+      # try to lookup an non existient key
+      {:error, _} = Proof.lookup_proof(<<0x1E, 0x2F>>, trie.root_hash, proof)
 
       {_, proof_ref} = proof.db
       :ok = Exleveldb.close(proof_ref)
@@ -114,13 +119,13 @@ defmodule MerklePatriciaTreeProofTest do
 
     Enum.each(list, fn {key, value} ->
       {^value, _} = Proof.construct_proof({trie, key, proof_trie})
-      #try to lookup an existing key
+      # try to lookup an existing key
       ^value = Proof.lookup_proof(key, trie.root_hash, proof_trie)
-      #try to lookup an non existient key
-      {:error, _} = Proof.lookup_proof(<<0x1e, 0x2f>>, trie.root_hash, proof_trie)
+      # try to lookup an non existient key
+      {:error, _} = Proof.lookup_proof(<<0x1E, 0x2F>>, trie.root_hash, proof_trie)
     end)
 
-    #try to lookup every key
+    # try to lookup every key
     Enum.each(list, fn {key, value} ->
       ^value = Proof.lookup_proof(key, trie.root_hash, proof_trie)
     end)
