@@ -12,16 +12,16 @@ defmodule MerklePatriciaTree.Test do
 
   ## Examples
 
-      iex> {MerklePatriciaTree.DB.ETS, db_ref} = MerklePatriciaTree.Test.random_ets_db()
-      iex> :ets.info(db_ref)[:type]
+      iex> {MerklePatriciaTree.DB.ETS, {edb, _}} = MerklePatriciaTree.Test.random_ets_db()
+      iex> :ets.info(edb)[:type]
       :set
 
-      iex> {MerklePatriciaTree.DB.ETS, db_ref} = MerklePatriciaTree.Test.random_ets_db(:test1)
-      iex> :ets.info(db_ref)[:name]
+      iex> {MerklePatriciaTree.DB.ETS, {edb,_}} = MerklePatriciaTree.Test.random_ets_db(:test1)
+      iex> :ets.info(edb)[:name]
       :test1
   """
   def random_ets_db(name \\ nil) do
-    MerklePatriciaTree.DB.ETS.init(name || MerklePatriciaTree.Test.random_atom(20))
+    MerklePatriciaTree.DB.ETS.init(name || MerklePatriciaTree.Test.random_atom(20), [])
   end
 
   @doc """

@@ -13,72 +13,60 @@ defmodule MerklePatriciaTree.DB do
 
   @type t :: module()
   @type db_name :: any()
-  @type db_ref :: any()
-  @type db :: {t, db_ref}
+  @type db_ref :: {any(), map()}
+  @type cf_ref :: any()
+  @type db :: {t, {db_ref, map()}}
   @type value :: binary()
 
-  @callback init(db_name) :: db
-  @callback get(db_ref, MerklePatriciaTree.Trie.key()) :: {:ok, value} | :not_found
-  @callback put!(db_ref, MerklePatriciaTree.Trie.key(), value) :: :ok
+  @callback init(db_name, [atom()]) :: db
+
+  # use custom cf
+  @callback get(db_ref, atom(), MerklePatriciaTree.Trie.key()) :: {:ok, value} | :not_found
+  @callback put!(db_ref, atom(), MerklePatriciaTree.Trie.key(), value) :: :ok
+
+  @doc """
+  Retrieves a key from the database. Using default column family.
+  """
+  @spec get(db, MerklePatriciaTree.Trie.key()) :: {:ok, value} | :not_found
+  def get(db, key), do: get(db, :default, key)
+
+  @doc """
+  Retrieves a key from the database, but raises if that key does not exist. Using default column family.
+  """
+  @spec get(db, MerklePatriciaTree.Trie.key()) :: {:ok, value} | :not_found
+  def get!(db, key), do: get!(db, :default, key)
 
   @doc """
   Retrieves a key from the database.
-
-  ## Examples
-
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
-      iex> MerklePatriciaTree.DB.get(db, "name")
-      :not_found
-
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
-      iex> MerklePatriciaTree.DB.put!(db, "name", "bob")
-      iex> MerklePatriciaTree.DB.get(db, "name")
-      {:ok, "bob"}
   """
-  @spec get(db, MerklePatriciaTree.Trie.key()) :: {:ok, value} | :not_found
-  def get(_db = {db_mod, db_ref}, key) do
-    db_mod.get(db_ref, key)
+  @spec get(db, atom(), MerklePatriciaTree.Trie.key()) :: {:ok, value} | :not_found
+  def get(_db = {db_mod, db_ref}, cf_name, key) do
+    db_mod.get(db_ref, cf_name, key)
   end
 
   @doc """
   Retrieves a key from the database, but raises if that key does not exist.
 
-  ## Examples
-
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
-      iex> MerklePatriciaTree.DB.get!(db, "name")
-      ** (MerklePatriciaTree.DB.KeyNotFoundError) cannot find key `name`
-
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
-      iex> MerklePatriciaTree.DB.put!(db, "name", "bob")
-      iex> MerklePatriciaTree.DB.get!(db, "name")
-      "bob"
   """
-  @spec get!(db, MerklePatriciaTree.Trie.key()) :: value
-  def get!(db, key) do
-    case get(db, key) do
+  @spec get!(db, atom(), MerklePatriciaTree.Trie.key()) :: value
+  def get!(db, cf_name, key) do
+    case get(db, cf_name, key) do
       {:ok, value} -> value
       :not_found -> raise KeyNotFoundError, message: "cannot find key `#{key}`"
     end
   end
 
   @doc """
-  Stores a key in the database.
-
-  ## Examples
-
-      ## Examples
-
-      iex> db = MerklePatriciaTree.Test.random_ets_db()
-      iex> MerklePatriciaTree.DB.put!(db, "name", "bob")
-      iex> MerklePatriciaTree.DB.get(db, "name")
-      {:ok, "bob"}
-      iex> MerklePatriciaTree.DB.put!(db, "name", "tom")
-      iex> MerklePatriciaTree.DB.get(db, "name")
-      {:ok, "tom"}
+  Stores a key in the database. Use default column family.
   """
   @spec put!(db, MerklePatriciaTree.Trie.key(), value) :: :ok
-  def put!(_db = {db_mod, db_ref}, key, value) do
-    db_mod.put!(db_ref, key, value)
+  def put!(db, key, value), do: put!(db, :default, key, value)
+
+  @doc """
+  Stores a key in the database.
+  """
+  @spec put!(db, atom(), MerklePatriciaTree.Trie.key(), value) :: :ok
+  def put!(_db = {db_mod, db_ref}, cf_name, key, value) do
+    db_mod.put!(db_ref, cf_name, key, value)
   end
 end

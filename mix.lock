@@ -11,4 +11,5 @@
   "keccakf1600": {:hex, :keccakf1600_orig, "2.0.0", "0a7217ddb3ee8220d449bbf7575ec39d4e967099f220a91e3dfca4dbaef91963", [:rebar3], [], "hexpm"},
   "keccakf1600_orig": {:hex, :keccakf1600_orig, "2.0.0", "0a7217ddb3ee8220d449bbf7575ec39d4e967099f220a91e3dfca4dbaef91963", [:rebar3], [], "hexpm"},
   "poison": {:hex, :poison, "3.1.0", "d9eb636610e096f86f25d9a46f35a9facac35609a7591b3be3326e99a0484665", [:mix], [], "hexpm"},
+  "rocksdb": {:hex, :rocksdb, "0.26.1", "bb73636e3572a2f66523c06465d8e7aa70620e8d4039c6f2f628056e6d5787bb", [:rebar3], [], "hexpm"},
 }
