@@ -15,7 +15,7 @@ defmodule MerklePatriciaTree.DB do
   @type db_name :: any()
   @type db_ref :: {any(), map()}
   @type cf_ref :: any()
-  @type db :: {t, {db_ref, map()}}
+  @type db :: {t, db_ref}
   @type value :: binary()
 
   @callback init(db_name, [atom()]) :: db
