@@ -22,11 +22,17 @@ defmodule MerklePatriciaTree.DB.RocksDB do
       end)
 
     db_name = String.to_charlist(db_name)
-    {:ok, db_ref, cf_refs} = :rocksdb.open_with_cf(db_name, [create_if_missing: true], cf_params)
 
-    cf_list = cf_names |> Enum.zip(cf_refs) |> Enum.into(%{})
+    case :rocksdb.open_with_cf(db_name, [create_if_missing: true], cf_params) do
+      {:ok, db_ref, cf_refs} ->
+        cf_list = cf_names |> Enum.zip(cf_refs) |> Enum.into(%{})
 
-    {__MODULE__, {db_ref, cf_list}}
+        {__MODULE__, {db_ref, cf_list}}
+
+      {:error, error} ->
+        Logger.error("Cannot open database. Error is: #{inspect(error)}")
+        raise "Failed to open database"
+    end
   end
 
   @doc """
