@@ -4,7 +4,7 @@ defmodule MerklePatriciaTree.Mixfile do
   def project do
     [
       app: :merkle_patricia_tree,
-      version: "0.2.7",
+      version: "0.3.0",
       elixir: "~> 1.6",
       description: "Ethereum's Merkle Patricia Trie data structure",
       package: [
@@ -44,7 +44,7 @@ defmodule MerklePatriciaTree.Mixfile do
       {:ex_rlp, "~> 0.3"},
       {:hex_prefix, "~> 0.1"},
       {:keccakf1600, "~> 2.0", hex: :keccakf1600_orig},
-      {:rocksdb, "~> 0.26"},
+      {:rocksdb, "~> 1.0"},
 
       # dev and test
       {:credo, "~> 0.9.1", only: [:dev, :test], runtime: false},
