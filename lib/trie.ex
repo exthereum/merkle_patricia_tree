@@ -61,7 +61,7 @@ defmodule MerklePatriciaTree.Trie do
 
     iex> trie = MerklePatriciaTree.Trie.new(MerklePatriciaTree.DB.RocksDB.init("/tmp/#{
     MerklePatriciaTree.Test.random_string(20)
-  }", [:default]), <<1, 2, 3>>)
+  }"), <<1, 2, 3>>)
     iex> trie.root_hash
     <<241, 136, 94, 218, 84, 183, 160, 83, 49, 140, 212, 30, 32, 147, 34,
       13, 171, 21, 214, 83, 129, 177, 21, 122, 54, 51, 168, 59, 253, 92,

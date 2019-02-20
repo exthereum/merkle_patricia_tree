@@ -4,22 +4,22 @@ defmodule MerklePatriciaTree.DB.ETSTest do
   alias MerklePatriciaTree.DB.ETS
 
   test "init creates an ets table" do
-    {_, {edb, _}} = ETS.init(MerklePatriciaTree.Test.random_atom(20), [])
+    {_, {edb, _}} = ETS.init(MerklePatriciaTree.Test.random_atom(20))
 
     :ets.insert(edb, {"key", "value"})
     assert :ets.lookup(edb, "key") == [{"key", "value"}]
   end
 
   test "get/1" do
-    {_, {edb, _} = db_ref} = ETS.init(MerklePatriciaTree.Test.random_atom(20), [])
+    {_, {edb, _} = db_ref} = ETS.init(MerklePatriciaTree.Test.random_atom(20))
 
     :ets.insert(edb, {"key", "value"})
-    assert ETS.get(db_ref, :default, "key") == {:ok, "value"}
-    assert ETS.get(db_ref, :default, "key2") == :not_found
+    assert ETS.get(db_ref, "key") == {:ok, "value"}
+    assert ETS.get(db_ref, "key2") == :not_found
   end
 
   test "get!/1" do
-    db = {_, {edb, _} = _db_ref} = ETS.init(MerklePatriciaTree.Test.random_atom(20), [])
+    db = {_, {edb, _} = _db_ref} = ETS.init(MerklePatriciaTree.Test.random_atom(20))
 
     :ets.insert(edb, {"key", "value"})
     assert DB.get!(db, "key") == "value"
@@ -30,9 +30,9 @@ defmodule MerklePatriciaTree.DB.ETSTest do
   end
 
   test "put!/2" do
-    {_, {edb, _} = db_ref} = ETS.init(MerklePatriciaTree.Test.random_atom(20), [])
+    {_, {edb, _} = db_ref} = ETS.init(MerklePatriciaTree.Test.random_atom(20))
 
-    assert ETS.put!(db_ref, :default, "key", "value") == :ok
+    assert ETS.put!(db_ref, "key", "value") == :ok
     assert :ets.lookup(edb, "key") == [{"key", "value"}]
   end
 end

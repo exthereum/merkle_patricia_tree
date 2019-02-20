@@ -14,20 +14,34 @@ defmodule MerklePatriciaTree.DB.RocksDB do
   @doc """
   Performs initialization for this db.
   """
-  @spec init(DB.db_name(), [atom()]) :: DB.db()
-  def init(db_name, cf_names) do
+  @spec init(DB.db_name()) :: DB.db()
+  def init(db_name) do
+    db_name = String.to_charlist(db_name)
+    db_options = [create_if_missing: true]
+
+    case :rocksdb.open_with_cf(db_name, db_options, [{'default', []}]) do
+      {:ok, db_ref, [default]} ->
+        {__MODULE__, {db_ref, default}}
+
+      {:error, error} ->
+        Logger.error("Cannot open database. Error is: #{inspect(error)}")
+        raise "Failed to open database"
+    end
+  end
+
+  @spec init_with_cf(DB.db_name(), [atom()]) :: [DB.db()]
+  def init_with_cf(db_name, cf_names) do
     cf_params =
       Enum.map(cf_names, fn name ->
         {Atom.to_charlist(name), []}
       end)
 
     db_name = String.to_charlist(db_name)
+    db_options = [create_if_missing: true, create_missing_column_families: true]
 
-    case :rocksdb.open_with_cf(db_name, [create_if_missing: true], cf_params) do
+    case :rocksdb.open_with_cf(db_name, db_options, cf_params) do
       {:ok, db_ref, cf_refs} ->
-        cf_list = cf_names |> Enum.zip(cf_refs) |> Enum.into(%{})
-
-        {__MODULE__, {db_ref, cf_list}}
+        Enum.map(cf_refs, fn cf_ref -> {__MODULE__, {db_ref, cf_ref}} end)
 
       {:error, error} ->
         Logger.error("Cannot open database. Error is: #{inspect(error)}")
@@ -44,10 +58,8 @@ defmodule MerklePatriciaTree.DB.RocksDB do
   @doc """
   Retrieves a key from the database.
   """
-  @spec get(DB.db_ref(), atom(), Trie.key()) :: {:ok, DB.value()} | :not_found
-  def get({db, cf_list}, cf_name, key) do
-    cf_ref = Map.get(cf_list, cf_name)
-
+  @spec get(DB.db_ref(), Trie.key()) :: {:ok, DB.value()} | :not_found
+  def get({db, cf_ref}, key) do
     case :rocksdb.get(db, cf_ref, key, []) do
       {:ok, v} ->
         {:ok, v}
@@ -64,10 +76,8 @@ defmodule MerklePatriciaTree.DB.RocksDB do
   @doc """
   Stores a key in the database.
   """
-  @spec put!(DB.db_ref(), atom(), Trie.key(), DB.value()) :: :ok
-  def put!({db, cf_list}, cf_name, key, value) do
-    cf_ref = Map.get(cf_list, cf_name)
-
+  @spec put!(DB.db_ref(), Trie.key(), DB.value()) :: :ok
+  def put!({db, cf_ref}, key, value) do
     case :rocksdb.put(db, cf_ref, key, value, []) do
       :ok -> :ok
     end

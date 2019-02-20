@@ -41,16 +41,15 @@ defmodule MerklePatriciaTree.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:ex_rlp, "~> 0.3"},
+      {:ex_rlp, "~> 0.5"},
       {:hex_prefix, "~> 0.1"},
       {:keccakf1600, "~> 2.0", hex: :keccakf1600_orig},
       {:rocksdb, "~> 1.0"},
 
       # dev and test
-      {:credo, "~> 0.9.1", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      {:ex_doc, "~> 0.16", only: :dev, runtime: false},
-      {:poison, "~> 3.1.0", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.19 ", only: :dev, runtime: false}
     ]
   end
 end
