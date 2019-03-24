@@ -17,7 +17,7 @@ Add `:merkle_patricia_tree` as a dependency to your project's `mix.exs`:
 ```elixir
 defp deps do
   [
-    {:merkle_patricia_tree, "~> 0.2.7"}
+    {:merkle_patricia_tree, "~> 0.2.8"}
   ]
 end
 ```

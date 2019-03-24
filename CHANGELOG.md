@@ -1,3 +1,5 @@
+# 0.2.8
+* Update ex_rlp to 0.5.2, swap Poison for Jason 1.1, update Dialyxir to 1.0.0-rc.4, update Credo to 1.0.0
 # 0.2.7
 * Update ex_rlp to 0.3.0
 # 0.2.6
