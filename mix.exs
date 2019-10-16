@@ -43,7 +43,7 @@ defmodule MerklePatriciaTree.Mixfile do
     [
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
       {:jason, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.16", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:hex_prefix, "~> 0.1.0"},
       {:ex_rlp, "~> 0.5.2"},
       {:keccakf1600, "~> 2.0.0", hex: :keccakf1600_orig},
