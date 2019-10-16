@@ -37,10 +37,12 @@ defmodule MerklePatriciaTree.Trie.Verifier do
     if v == "" do
       {:error, "empty leaf value at #{inspect(k)}"}
     else
-      if not Enum.member?(values, v) do
-        {:error, "leaf value v does not appear in values (#{inspect(v)})"}
-      else
-        :ok
+      case Enum.member?(values, v) do
+        false ->
+          {:error, "leaf value v does not appear in values (#{inspect(v)})"}
+
+        true ->
+          :ok
       end
     end
   end
